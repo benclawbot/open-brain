@@ -1,56 +1,57 @@
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: openbrain-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: openbrain
-      POSTGRES_DB: openbrain
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   api:
     build: .
     container_name: openbrain-api
-    env_file:
-      - .env
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: openbrain
-      DB_USER: postgres
-      DB_PASSWORD: openbrain
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-    ports:
-      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
-
-  dashboard:
-    build: .
-    container_name: openbrain-dashboard
     env_file:
-      - .env
+    - .env
     environment:
       DB_HOST: postgres
-      DB_PORT: 5432
       DB_NAME: openbrain
-      DB_USER: postgres
       DB_PASSWORD: openbrain
+      DB_PORT: 5432
+      DB_USER: postgres
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    ports:
+    - 8000:8000
+  dashboard:
+    build: .
+    command: streamlit run ui/dashboard.py --server.port=8501 --server.address=0.0.0.0
+    container_name: openbrain-dashboard
+    depends_on:
+    - postgres
+    env_file:
+    - .env
+    environment:
+      DB_HOST: postgres
+      DB_NAME: openbrain
+      DB_PASSWORD: openbrain
+      DB_PORT: 5432
+      DB_USER: postgres
       STREAMLIT_PORT: 8501
     ports:
-      - "8501:8501"
-    depends_on:
-      - postgres
-    command: streamlit run ui/dashboard.py --server.port=8501 --server.address=0.0.0.0
-
+    - 8501:8501
+    volumes:
+    - ./.streamlit:/root/.streamlit
+  postgres:
+    container_name: openbrain-postgres
+    environment:
+      POSTGRES_DB: openbrain
+      POSTGRES_PASSWORD: openbrain
+      POSTGRES_USER: postgres
+    healthcheck:
+      interval: 5s
+      retries: 5
+      test:
+      - CMD-SHELL
+      - pg_isready -U postgres
+      timeout: 5s
+    image: pgvector/pgvector:pg16
+    ports:
+    - 5433:5432
+    volumes:
+    - postgres_data:/var/lib/postgresql/data
 volumes:
-  postgres_data:
+  postgres_data: null

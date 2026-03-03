@@ -1,4 +1,4 @@
-"""Open Brain Dashboard - Enhanced Design"""
+"""Open Brain Dashboard - Elegant Minimalist Design"""
 
 import streamlit as st
 import requests
@@ -7,226 +7,215 @@ import yaml
 from datetime import datetime
 from pathlib import Path
 
-# ═══════════════════════════════════════════════════════════════
-# CONFIG & STYLING
-# ═══════════════════════════════════════════════════════════════
-st.set_page_config(
-    page_title="🧠 Open Brain",
-    page_icon="🧠",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Config
+st.set_page_config(page_title="Open Brain", page_icon="🧠", layout="wide")
 
-# Custom CSS for modern look
+# Simple minimalist CSS
 st.markdown("""
 <style>
-    /* Main background */
-    .stApp {
-        background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+    
+    * { font-family: 'Inter', sans-serif !important; }
+    
+    :root {
+        --bg: #111111;
+        --surface: #1a1a1a;
+        --border: #333333;
+        --text: #ffffff;
+        --text-dim: #888888;
+        --accent: #3b82f6;
     }
     
-    /* Cards */
-    .card {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 12px;
-        padding: 20px;
-        margin: 10px 0;
+    html, body, .stApp { background: var(--bg) !important; color: var(--text) !important; }
+    
+    [data-testid="stSidebar"] { background: var(--surface) !important; border-right: 1px solid var(--border); }
+    
+    h1, h2, h3, p, span, div, label { font-family: 'Inter', sans-serif !important; color: var(--text) !important; }
+    h1 { font-size: 1.25rem !important; font-weight: 500 !important; margin: 0 !important; }
+    h2 { font-size: 1rem !important; font-weight: 500 !important; }
+    p { font-size: 0.875rem !important; margin: 0 !important; }
+    
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > div {
+        background: var(--surface) !important;
+        border: 1px solid var(--border) !important;
+        color: var(--text) !important;
+        border-radius: 6px !important;
     }
     
-    /* Headers */
-    h1, h2, h3 {
-        color: #fff !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Metrics */
-    [data-testid="stMetricValue"] {
-        font-size: 2.5rem !important;
-        font-weight: 700 !important;
-        background: linear-gradient(90deg, #00d4ff, #7c3aed);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background: rgba(0,0,0,0.3) !important;
-    }
-    
-    /* Buttons */
     .stButton > button {
-        border-radius: 8px;
-        border: none;
-        background: linear-gradient(90deg, #00d4ff, #7c3aed);
-        color: white;
-        font-weight: 600;
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background: rgba(255,255,255,0.05);
-        border-radius: 8px 8px 0 0;
-        padding: 10px 20px;
-    }
-    
-    /* Search */
-    input[type="text"] {
-        background: rgba(255,255,255,0.1) !important;
-        border: 1px solid rgba(255,255,255,0.2) !important;
+        background: var(--surface) !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border) !important;
         border-radius: 8px !important;
+        font-size: 0.875rem !important;
+        width: 100%;
+        text-align: left;
+        padding: 12px 16px !important;
     }
+    
+    .stButton > button:hover {
+        border-color: var(--accent) !important;
+    }
+    
+    .stButton > button[kind="primary"] {
+        background: var(--accent) !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    [data-testid="stHeader"] { display: none !important; }
+    
+    /* Hide Streamlit keyboard shortcut hints */
+    div[data-testid="stTooltipIcon"] { display: none !important; }
+    [class*="keyboard"] { display: none !important; }
+    
+    .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+    
+    .nav-btn { margin-bottom: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════
-# API CLIENT
-# ═══════════════════════════════════════════════════════════════
-API_BASE = "http://localhost:8000"
+# API
+API = "http://localhost:8000"
 
 def get_stats():
-    try:
-        return requests.get(f"{API_BASE}/stats", timeout=5).json()
-    except:
-        return {"total": 0, "by_source": {}, "top_tags": {}, "this_week": 0}
+    try: return requests.get(f"{API}/stats", timeout=5).json()
+    except: return {"total": 0, "this_week": 0, "by_source": {}, "top_tags": {}}
 
-def search_memories(query, limit=20):
-    try:
-        return requests.get(f"{API_BASE}/memories/search", params={"query": query, "limit": limit}, timeout=10).json()
-    except:
-        return []
+def search(q, limit=20):
+    try: return requests.get(f"{API}/memories/search", params={"query": q, "limit": limit}, timeout=10).json()
+    except: return []
 
-def create_memory(content, source="dashboard", tags=None):
-    try:
-        return requests.post(f"{API_BASE}/memories", json={"content": content, "source": source, "tags": tags or []}, timeout=10).json()
-    except Exception as e:
-        return {"error": str(e)}
+def create(content, source="dashboard", tags=None):
+    try: return requests.post(f"{API}/memories", json={"content": content, "source": source, "tags": tags or []}, timeout=10).json()
+    except: return {"error": "Failed"}
 
-# ═══════════════════════════════════════════════════════════════
-# SIDEBAR
-# ═══════════════════════════════════════════════════════════════
+# Initialize session state for page
+if 'page' not in st.session_state:
+    st.session_state.page = "Search"
+
+# Sidebar with buttons
 with st.sidebar:
-    st.markdown("""
-    <div style="text-align: center; padding: 20px 0;">
-        <h1 style="font-size: 3rem; margin: 0;">🧠</h1>
-        <h2 style="margin: 0; background: linear-gradient(90deg, #00d4ff, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Open Brain</h2>
-        <p style="color: #888;">Personal Semantic Memory</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Quick stats in sidebar
-    stats = get_stats()
-    st.metric("Total Memories", f"{stats.get('total', 0):,}")
-    st.metric("This Week", f"{stats.get('this_week', 0):,}")
-    
-    st.markdown("---")
-    
-    # Navigation
-    page = st.radio("Navigate", ["🔍 Search", "➕ Create", "📊 Stats", "⚙️ Settings"])
-    
-    st.markdown("---")
-    st.caption(f"🕐 Last updated: {datetime.now().strftime('%H:%M')}")
-
-# ═══════════════════════════════════════════════════════════════
-# MAIN CONTENT
-# ═══════════════════════════════════════════════════════════════
-
-if page == "🔍 Search":
-    st.title("🔍 Search Memories")
-    
-    # Search box
-    query = st.text_input("", placeholder="Ask anything... (e.g., 'what did I build today?')", label_visibility="collapsed")
-    
-    if query:
-        with st.spinner("Searching..."):
-            results = search_memories(query)
-            
-            if results:
-                st.markdown(f"**Found {len(results)} results**")
-                
-                for i, mem in enumerate(results):
-                    with st.container():
-                        st.markdown(f"""
-                        <div class="card">
-                            <p style="font-size: 1.1rem; margin-bottom: 10px;">{mem.get('content', '')[:300]}</p>
-                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <span style="background: #00d4ff20; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">📤 {mem.get('source', 'unknown')}</span>
-                                {''.join(f'<span style="background: #7c3aed20; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">#{t}</span>' for t in (mem.get('tags', [])[:3]))}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-            else:
-                st.info("No memories found. Try a different query.")
-
-elif page == "➕ Create":
-    st.title("➕ Create Memory")
-    
-    col1, col2 = st.columns([3, 1])
-    
+    col1, col2 = st.columns([1, 2])
     with col1:
-        content = st.text_area("What do you want to remember?", height=150, placeholder="Enter any information you want to store...")
-    
+        st.image("ui/logo.jpg", width=60)
     with col2:
-        source = st.selectbox("Source", ["manual", "telegram", "whatsapp", "email", "claude", "chatgpt"])
-        tags = st.text_input("Tags (comma separated)", placeholder="ai, project, idea")
+        st.markdown("**Open Brain**")
+    st.markdown("---")
     
-    if st.button("💾 Save Memory", use_container_width=True):
+    stats = get_stats()
+    st.metric("Total", stats.get("total", 0))
+    st.metric("This Week", stats.get("this_week", 0))
+    
+    st.markdown("---")
+    
+    # Flat buttons for navigation
+    if st.button("Search", use_container_width=True):
+        st.session_state.page = "Search"
+    if st.button("Create", use_container_width=True):
+        st.session_state.page = "Create"
+    if st.button("Stats", use_container_width=True):
+        st.session_state.page = "Stats"
+    if st.button("Settings", use_container_width=True):
+        st.session_state.page = "Settings"
+
+# Main content
+page = st.session_state.page
+
+if page == "Search":
+    st.title("Search")
+    q = st.text_input("", placeholder="Search memories...")
+    
+    if q:
+        results = search(q)
+        for mem in results:
+            st.markdown(f"""
+            <div class="card">
+                <p>{mem.get("content", "")[:200]}</p>
+                <p style="color: var(--text-dim); margin-top: 8px;">{mem.get("source", "")} • {", ".join(mem.get("tags", [])[:3])}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+elif page == "Create":
+    st.title("Create")
+    content = st.text_area("", placeholder="What do you want to remember?", height=120)
+    
+    c1, c2 = st.columns([3, 1])
+    source = c1.selectbox("Source", ["manual", "telegram", "whatsapp", "email"])
+    tags = c2.text_input("Tags", placeholder="ai, idea")
+    
+    if st.button("Save Memory", type="primary"):
         if content:
             tag_list = [t.strip() for t in tags.split(",") if t.strip()]
-            result = create_memory(content, source, tag_list)
-            if result.get("id"):
-                st.success("✅ Memory saved!")
-            else:
-                st.error(f"Error: {result.get('error', 'Unknown error')}")
-        else:
-            st.warning("Please enter some content")
+            result = create(content, source, tag_list)
+            if result.get("id"): 
+                st.success("Saved!")
+            else: 
+                st.error("Error")
 
-elif page == "📊 Stats":
-    st.title("📊 Statistics")
-    
+elif page == "Stats":
+    st.title("Stats")
     stats = get_stats()
     
-    # Top row metrics
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.metric("Total Memories", f"{stats.get('total', 0):,}")
-    with c2:
-        st.metric("This Week", f"{stats.get('this_week', 0):,}")
-    with c3:
-        sources = len(stats.get('by_source', {}))
-        st.metric("Sources", f"{sources}")
-    with c4:
-        tags = len(stats.get('top_tags', {}))
-        st.metric("Unique Tags", f"{tags}")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total", stats.get("total", 0))
+    c2.metric("Week", stats.get("this_week", 0))
+    c3.metric("Sources", len(stats.get("by_source", {})))
     
-    # Charts
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("By Source")
-        source_data = stats.get('by_source', {})
-        if source_data:
-            df = pd.DataFrame(list(source_data.items()), columns=["Source", "Count"])
-            st.bar_chart(df.set_index("Source"))
-    
-    with col2:
-        st.subheader("Top Tags")
-        tag_data = stats.get('top_tags', {})
-        if tag_data:
-            df = pd.DataFrame(list(tag_data.items())[:10], columns=["Tag", "Count"])
-            st.bar_chart(df.set_index("Tag"))
+    if stats.get("by_source"):
+        st.bar_chart(pd.DataFrame(list(stats["by_source"].items()), columns=["Source", "Count"]).set_index("Source"))
 
-elif page == "⚙️ Settings":
-    st.title("⚙️ Settings")
-    st.info("Settings page coming soon! Edit config/settings.yaml directly for now.")
+elif page == "Settings":
+    st.title("Settings")
+    
+    # Load settings
+    config_path = Path("config/settings.yaml")
+    if config_path.exists():
+        with open(config_path) as f:
+            settings = yaml.safe_load(f) or {}
+    else:
+        settings = {}
+    
+    with st.form("settings"):
+        st.subheader("Database")
+        db = settings.get("database", {})
+        c1, c2 = st.columns(2)
+        db_host = c1.text_input("Host", db.get("host", "postgres"))
+        db_port = c2.number_input("Port", value=db.get("port", 5432), min_value=1, max_value=65535, step=1)
+        c1, c2 = st.columns(2)
+        db_name = c1.text_input("Name", db.get("name", "openbrain"))
+        db_user = c2.text_input("User", db.get("user", "postgres"))
+        
+        st.subheader("Embedder")
+        emb = settings.get("embedder", {})
+        c1, c2 = st.columns(2)
+        emb_provider = c1.selectbox("Provider", ["openrouter", "openai", "ollama", "custom"], 
+            ["openrouter", "openai", "ollama", "custom"].index(emb.get("provider", "openrouter")))
+        emb_model = c2.text_input("Model", emb.get("model", "text-embedding-3-small"))
+        
+        st.subheader("Security")
+        sec = settings.get("security", {})
+        sec_mode = st.selectbox("Mode", ["direct", "sandbox"],
+            ["direct", "sandbox"].index(sec.get("mode", "direct")))
+        
+        if st.form_submit_button("Save"):
+            settings["database"] = {"host": db_host, "port": int(db_port), "name": db_name, "user": db_user, "password": db.get("password", "")}
+            settings["embedder"] = {"provider": emb_provider, "model": emb_model, "dimensions": emb.get("dimensions", 768)}
+            settings["security"] = {"mode": sec_mode}
+            settings["api"] = settings.get("api", {"host": "0.0.0.0", "port": 8000})
+            settings["mcp"] = settings.get("mcp", {"host": "0.0.0.0", "port": 8080})
+            settings["dashboard"] = settings.get("dashboard", {"port": 8501})
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(config_path, "w") as f:
+                yaml.dump(settings, f)
+            st.success("Saved! Restart containers to apply.")
 
-# Footer
-st.markdown("---")
-st.markdown(f"""
-<div style="text-align: center; color: #666; padding: 20px;">
-    🧠 Open Brain v1.0 | Personal Semantic Memory System
-</div>
-""", unsafe_allow_html=True)
+st.caption(f"Updated: {datetime.now().strftime('%H:%M')}")

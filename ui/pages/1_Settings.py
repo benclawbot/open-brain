@@ -2,6 +2,7 @@
 
 import streamlit as st
 import yaml
+import subprocess
 from pathlib import Path
 
 st.set_page_config(page_title="Settings - Open Brain", page_icon="⚙️")
@@ -25,7 +26,7 @@ with st.form("settings_form"):
         db_name = st.text_input("Database Name", value=settings.get('database', {}).get('name', 'openbrain'))
         db_user = st.text_input("User", value=settings.get('database', {}).get('user', 'postgres'))
     with col2:
-        db_port = st.number_input("Port", value=settings.get('database', {}).get('port', 5432), min_value=1, max_value=65535)
+        db_port = st.number_input("Port", value=settings.get('database', {}).get('port', 5432), min_value=1, max_value=65535, step=1)
         db_password = st.text_input("Password", type="password", value=settings.get('database', {}).get('password', ''))
     
     st.subheader("🧠 Embedding Provider")
@@ -46,10 +47,57 @@ with st.form("settings_form"):
         dashboard_port = st.number_input("Dashboard Port", value=settings.get('dashboard', {}).get('port', 8501), min_value=1, max_value=65535)
     
     st.subheader("🔒 Security")
-    security_mode = st.selectbox("Mode", ["direct", "sandbox"], 
-        index=["direct", "sandbox"].index(settings.get('security', {}).get('mode', 'direct')))
+    col1, col2 = st.columns(2)
+    with col1:
+        security_mode = st.selectbox("Mode", ["direct", "sandbox"], 
+            index=["direct", "sandbox"].index(settings.get('security', {}).get('mode', 'direct')))
+    with col2:
+        st.write("")
+        st.write("")
+        if st.form_submit_button("🚀 Restart in Sandbox Mode", type="primary"):
+            # Save settings first
+            new_settings = {
+                'database': {
+                    'host': db_host,
+                    'port': int(db_port),
+                    'name': db_name,
+                    'user': db_user,
+                    'password': db_password,
+                },
+                'embedder': {
+                    'provider': embedder_provider,
+                    'model': embedder_model,
+                    'dimensions': settings.get('embedder', {}).get('dimensions', 768),
+                },
+                'api': {
+                    'host': '0.0.0.0',
+                    'port': int(api_port),
+                    'cors_origins': ['*'],
+                },
+                'mcp': {
+                    'host': '0.0.0.0',
+                    'port': int(mcp_port),
+                },
+                'dashboard': {
+                    'port': int(dashboard_port),
+                },
+                'tags': settings.get('tags', {'deny_list': ['password', 'secret', 'api_key'], 'default_tags': ['auto']}),
+                'analytics': settings.get('analytics', {'trend_weeks': 4, 'weekly_report_day': 6}),
+                'security': {'mode': 'sandbox'},
+            }
+            
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(config_path, 'w') as f:
+                yaml.dump(new_settings, f, default_flow_style=False)
+            
+            # Restart in sandbox mode
+            try:
+                subprocess.run(["docker", "compose", "restart"], cwd="/app", check=True)
+                st.success("✅ Restarting in sandbox mode!")
+            except:
+                st.success("✅ Settings saved! Run `docker compose restart` to apply sandbox mode.")
     
-    submitted = st.form_submit_button("💾 Save Settings", type="primary")
+    submitted = st.form_submit_button("💾 Save Settings", type="secondary")
     
     if submitted:
         new_settings = {
@@ -86,8 +134,7 @@ with st.form("settings_form"):
         with open(config_path, 'w') as f:
             yaml.dump(new_settings, f, default_flow_style=False)
         
-        st.success("✅ Settings saved! Restart containers to apply changes.")
-        st.info("💡 Run: `docker compose restart`")
+        st.success("✅ Settings saved!")
 
 st.markdown("---")
-st.caption("Open Brain v1.0 - Personal Semantic Memory System")
+st.caption("🧠 Open Brain v1.0 - Personal Semantic Memory System")
