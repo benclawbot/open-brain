@@ -114,11 +114,9 @@ def search_memories(
         conditions.append("content ILIKE %s")
         params.append(f"%{query}%")
     
-    # Vector search
-    if embedding:
-        conditions.append("embedding <=> %s")
-        params.append(embedding)
-    
+    # Vector search — not added to WHERE (distance is not boolean);
+    # used in ORDER BY and SELECT instead
+
     # Source filter
     if sources:
         conditions.append("source = ANY(%s)")
@@ -139,21 +137,23 @@ def search_memories(
         params.append(date_to)
     
     where_clause = " AND ".join(conditions) if conditions else "TRUE"
-    
+
     # Build query based on whether we're doing vector search or text search
     if embedding:
+        # Add embedding IS NOT NULL to only search rows with embeddings
+        emb_where = f"{where_clause} AND embedding IS NOT NULL" if where_clause != "TRUE" else "embedding IS NOT NULL"
         query_sql = f"""
-            SELECT 
+            SELECT
                 id, source, source_id, content, raw_content,
                 entities, tags, tag_sources, importance, created_at,
                 original_date, language, metadata,
-                (embedding <=> %s) as score
+                (embedding <=> %s::vector) as score
             FROM memory
-            WHERE {where_clause}
-            ORDER BY embedding <=> %s
+            WHERE {emb_where}
+            ORDER BY embedding <=> %s::vector
             LIMIT %s
         """
-        params_final = [embedding] + params + [embedding, limit]
+        params_final = params + [embedding, embedding, limit]
     else:
         query_sql = f"""
             SELECT 
@@ -257,8 +257,10 @@ def get_memories_by_entity(
             mem['entities'] = json.loads(mem['entities'])
         if isinstance(mem.get('metadata'), str):
             mem['metadata'] = json.loads(mem['metadata'])
+        if isinstance(mem.get('tag_sources'), str):
+            mem['tag_sources'] = json.loads(mem['tag_sources'])
         memories.append(mem)
-    
+
     return memories
 
 
@@ -345,7 +347,7 @@ def get_trending_tags(weeks: int = 4, limit: int = 10) -> Dict[str, int]:
         cursor.execute("""
             SELECT tag, COUNT(*) as count
             FROM memory, UNNEST(tags) as tag
-            WHERE created_at >= CURRENT_DATE - INTERVAL '%s weeks'
+            WHERE created_at >= CURRENT_DATE - (%s * INTERVAL '1 week')
             GROUP BY tag
             ORDER BY count DESC
             LIMIT %s
@@ -416,7 +418,7 @@ def get_memories_for_report(
         cursor.execute("""
             SELECT id, source, content, tags, entities, created_at
             FROM memory
-            WHERE created_at >= CURRENT_DATE - INTERVAL '%s days'
+            WHERE created_at >= CURRENT_DATE - (%s * INTERVAL '1 day')
             ORDER BY created_at DESC
         """, (days,))
         results = cursor.fetchall()

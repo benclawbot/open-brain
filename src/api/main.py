@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Add src to path
 import sys
@@ -52,7 +52,7 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:8501", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -65,7 +65,7 @@ class MemoryCreate(BaseModel):
     source: str = "api"
     tags: List[str] = []
     importance: float = 0.5
-    metadata: dict = {}
+    metadata: dict = Field(default_factory=dict)
 
 
 class MemoryResponse(BaseModel):
@@ -160,8 +160,12 @@ async def create_memory(memory: MemoryCreate):
 async def get_memory(memory_id: str):
     """Get a specific memory by ID."""
     import uuid
-    memory = get_memory_by_id(uuid.UUID(memory_id))
-    
+    try:
+        parsed_id = uuid.UUID(memory_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid UUID: {memory_id}")
+    memory = get_memory_by_id(parsed_id)
+
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
     
@@ -206,7 +210,7 @@ async def get_stats():
 async def get_trends(weeks: int = Query(4, le=12)):
     """Get trending topics."""
     analyzer = TrendAnalyzer()
-    trends = analyzer.get_trending_topics(weeks)
+    trends = analyzer.get_top_trending(weeks)
     return {"trends": trends}
 
 

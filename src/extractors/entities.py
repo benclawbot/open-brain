@@ -125,8 +125,9 @@ class EntityExtractor:
                         entities['organizations'].add(entity_name)
                     elif entity_type == 'GPE':
                         entities['locations'].add(entity_name)
-        except Exception:
-            pass
+        except Exception as e:
+            import sys
+            print(f"Warning: NER extraction failed: {e}", file=sys.stderr)
         
         # Keyword-based extraction
         words = set(text.lower().split())

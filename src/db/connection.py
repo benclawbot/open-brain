@@ -79,12 +79,14 @@ class ConnectionPool:
         """Get a connection from the pool."""
         if self._pool is None:
             self.initialize()
-        
-        conn = self._pool.getconn()
+
+        conn = None
         try:
+            conn = self._pool.getconn()
             yield conn
         finally:
-            self._pool.putconn(conn)
+            if conn is not None:
+                self._pool.putconn(conn)
     
     @contextmanager
     def get_cursor(self, dict_cursor: bool = True):

@@ -439,16 +439,22 @@ class EmbedderFactory:
 _embedder: Optional[BaseEmbedder] = None
 
 
+def reset_embedder():
+    """Reset the global embedder instance (e.g., after config change)."""
+    global _embedder
+    _embedder = None
+
+
 def get_embedder(config_path: str = None) -> BaseEmbedder:
     """Get the global embedder instance."""
     global _embedder
-    
+
     if _embedder is None:
         if config_path:
             EmbedderConfig.reset()
         config = EmbedderConfig.get_instance(config_path)
         _embedder = EmbedderFactory.create(config)
-    
+
     return _embedder
 
 
