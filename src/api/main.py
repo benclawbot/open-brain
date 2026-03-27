@@ -195,7 +195,14 @@ async def search_memories_endpoint(search: SearchRequest):
         sources=sources,
         tags=tags
     )
-    
+
+    # Ensure created_at is serialized as string
+    for r in results:
+        if hasattr(r.get("created_at", ""), "isoformat"):
+            r["created_at"] = r["created_at"].isoformat()
+        elif isinstance(r, dict) and "created_at" in r and not isinstance(r["created_at"], str):
+            r["created_at"] = str(r["created_at"])
+
     return results
 
 
