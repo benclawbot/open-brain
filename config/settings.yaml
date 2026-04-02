@@ -4,6 +4,7 @@ database:
   name: openbrain
   user: postgres
   password: openbrain
+  timezone: auto
 
 embedder:
   provider: ollama
