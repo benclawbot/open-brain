@@ -4,8 +4,16 @@ Command-line interface for memory operations.
 """
 import argparse
 import json
+import os
 import sys
 from typing import Optional
+
+from dotenv import load_dotenv
+
+# Load .env from open-brain project root
+_dotenv_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env')
+if os.path.exists(_dotenv_path):
+    load_dotenv(_dotenv_path)
 
 from .search import search_memories_cmd
 from .store import store_memory_cmd
@@ -89,3 +97,4 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+

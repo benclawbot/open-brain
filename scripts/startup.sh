@@ -3,8 +3,13 @@ set -e
 
 echo "Starting Open Brain..."
 
-# Load environment
-export $(cat .env | grep -v '^#' | xargs) 2>/dev/null || true
+# Load environment from .env if present (compose env vars are already injected)
+if [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
 
 # Set defaults
 export DB_HOST=${DB_HOST:-postgres}
@@ -15,13 +20,17 @@ export DB_PASSWORD=${DB_PASSWORD:-openbrain}
 
 # Check if database needs setup
 echo "Checking database..."
-python scripts/check_db.py
-
-if [ $? -eq 1 ]; then
+if python scripts/check_db.py; then
+  echo "Database already configured."
+else
+  CHECK_STATUS=$?
+  if [ "$CHECK_STATUS" -eq 1 ]; then
     echo "Database needs setup. Running setup..."
     python scripts/setup_db.py
-else
-    echo "Database already configured."
+  else
+    echo "Database check failed (exit $CHECK_STATUS)."
+    exit "$CHECK_STATUS"
+  fi
 fi
 
 # Start the application

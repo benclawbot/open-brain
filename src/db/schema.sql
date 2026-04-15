@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS memory (
     source_id VARCHAR(255),
     content TEXT NOT NULL,
     raw_content TEXT,
-    embedding vector(768),
+    embedding vector(1536),
     entities JSONB DEFAULT '{}',
     tags TEXT[] DEFAULT '{}',
     tag_sources JSONB DEFAULT '{}',
@@ -77,3 +77,4 @@ BEGIN
     FROM memory;
 END;
 $$ LANGUAGE plpgsql;
+

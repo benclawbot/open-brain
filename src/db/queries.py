@@ -114,10 +114,10 @@ def search_memories(
         conditions.append("content ILIKE %s")
         params.append(f"%{query}%")
     
-    # Vector search
+    # Vector search uses ORDER BY distance (not a WHERE boolean condition)
+    vector_param = None
     if embedding:
-        conditions.append("embedding <=> %s")
-        params.append(embedding)
+        vector_param = "[" + ",".join(str(float(x)) for x in embedding) + "]"
     
     # Source filter
     if sources:
@@ -147,13 +147,13 @@ def search_memories(
                 id, source, source_id, content, raw_content,
                 entities, tags, tag_sources, importance, created_at,
                 original_date, language, metadata,
-                (embedding <=> %s) as score
+                (embedding <=> %s::vector) as score
             FROM memory
             WHERE {where_clause}
-            ORDER BY embedding <=> %s
+            ORDER BY embedding <=> %s::vector
             LIMIT %s
         """
-        params_final = [embedding] + params + [embedding, limit]
+        params_final = [vector_param] + params + [vector_param, limit]
     else:
         query_sql = f"""
             SELECT 
@@ -429,3 +429,5 @@ def get_memories_for_report(
         memories.append(mem)
     
     return memories
+
+

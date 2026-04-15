@@ -8,7 +8,7 @@ database:
 embedder:
   provider: openrouter
   model: text-embedding-3-small
-  dimensions: 768
+  dimensions: 1536
 
 mcp:
   host: 0.0.0.0
@@ -39,3 +39,4 @@ analytics:
 
 security:
   mode: direct
+

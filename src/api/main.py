@@ -3,6 +3,7 @@ Open Brain REST API.
 FastAPI server for memory operations.
 """
 import os
+from datetime import datetime
 from typing import List, Optional
 from contextlib import asynccontextmanager
 
@@ -75,7 +76,7 @@ class MemoryResponse(BaseModel):
     tags: List[str]
     entities: dict
     importance: float
-    created_at: str
+    created_at: datetime
 
 
 class SearchRequest(BaseModel):
@@ -220,3 +221,5 @@ async def get_weekly_report(days: int = Query(7, le=30)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
