@@ -106,70 +106,75 @@ def search_memories(
     Returns:
         List of memory records with scores
     """
-    conditions = []
-    params = []
-    
-    # Text search
-    if query:
-        conditions.append("content ILIKE %s")
-        params.append(f"%{query}%")
-    
-    # Vector search uses ORDER BY distance (not a WHERE boolean condition)
-    vector_param = None
-    if embedding:
-        vector_param = "[" + ",".join(str(float(x)) for x in embedding) + "]"
-    
-    # Source filter
+    # Build filter conditions (source, tags, dates — NOT text, which is
+    # handled differently depending on whether we have an embedding)
+    filter_conditions = []
+    filter_params = []
+
     if sources:
-        conditions.append("source = ANY(%s)")
-        params.append(sources)
-    
-    # Tags filter
+        filter_conditions.append("source = ANY(%s)")
+        filter_params.append(sources)
+
     if tags:
-        conditions.append("tags && %s")
-        params.append(tags)
-    
-    # Date filters
+        filter_conditions.append("tags && %s")
+        filter_params.append(tags)
+
     if date_from:
-        conditions.append("created_at >= %s")
-        params.append(date_from)
-    
+        filter_conditions.append("created_at >= %s")
+        filter_params.append(date_from)
+
     if date_to:
-        conditions.append("created_at <= %s")
-        params.append(date_to)
-    
-    where_clause = " AND ".join(conditions) if conditions else "TRUE"
-    
-    # Build query based on whether we're doing vector search or text search
+        filter_conditions.append("created_at <= %s")
+        filter_params.append(date_to)
+
+    filter_where = " AND ".join(filter_conditions) if filter_conditions else "TRUE"
+
     if embedding:
+        # Semantic search: use vector distance for ranking, skip text ILIKE
+        # (the whole point is to find semantically similar content, not literal matches)
+        emb_where = f"{filter_where} AND embedding IS NOT NULL" if filter_where != "TRUE" else "embedding IS NOT NULL"
         query_sql = f"""
-            SELECT 
+            SELECT
                 id, source, source_id, content, raw_content,
                 entities, tags, tag_sources, importance, created_at,
                 original_date, language, metadata,
                 (embedding <=> %s::vector) as score
             FROM memory
-            WHERE {where_clause}
+            WHERE {emb_where}
             ORDER BY embedding <=> %s::vector
             LIMIT %s
         """
-        params_final = [vector_param] + params + [vector_param, limit]
+        params_final = [embedding] + filter_params + [embedding, limit]
     else:
-        query_sql = f"""
-            SELECT 
-                id, source, source_id, content, raw_content,
-                entities, tags, tag_sources, importance, created_at,
-                original_date, language, metadata,
-                CASE 
-                    WHEN content ILIKE %s THEN 1.0
-                    ELSE 0.5
-                END as score
-            FROM memory
-            WHERE {where_clause}
-            ORDER BY score DESC, importance DESC, created_at DESC
-            LIMIT %s
-        """
-        params_final = [f"%{query}%"] + params + [limit]
+        # Text fallback: use ILIKE for filtering and scoring
+        if query:
+            text_where = f"content ILIKE %s AND {filter_where}" if filter_where != "TRUE" else "content ILIKE %s"
+            query_sql = f"""
+                SELECT
+                    id, source, source_id, content, raw_content,
+                    entities, tags, tag_sources, importance, created_at,
+                    original_date, language, metadata,
+                    1.0 as score
+                FROM memory
+                WHERE {text_where}
+                ORDER BY importance DESC, created_at DESC
+                LIMIT %s
+            """
+            params_final = [f"%{query}%"] + filter_params + [limit]
+        else:
+            # No query and no embedding — just return by filters
+            query_sql = f"""
+                SELECT
+                    id, source, source_id, content, raw_content,
+                    entities, tags, tag_sources, importance, created_at,
+                    original_date, language, metadata,
+                    0.5 as score
+                FROM memory
+                WHERE {filter_where}
+                ORDER BY importance DESC, created_at DESC
+                LIMIT %s
+            """
+            params_final = filter_params + [limit]
     
     with get_db_cursor() as cursor:
         cursor.execute(query_sql, params_final)
@@ -257,8 +262,10 @@ def get_memories_by_entity(
             mem['entities'] = json.loads(mem['entities'])
         if isinstance(mem.get('metadata'), str):
             mem['metadata'] = json.loads(mem['metadata'])
+        if isinstance(mem.get('tag_sources'), str):
+            mem['tag_sources'] = json.loads(mem['tag_sources'])
         memories.append(mem)
-    
+
     return memories
 
 
@@ -345,7 +352,7 @@ def get_trending_tags(weeks: int = 4, limit: int = 10) -> Dict[str, int]:
         cursor.execute("""
             SELECT tag, COUNT(*) as count
             FROM memory, UNNEST(tags) as tag
-            WHERE created_at >= CURRENT_DATE - INTERVAL '%s weeks'
+            WHERE created_at >= CURRENT_DATE - (%s * INTERVAL '1 week')
             GROUP BY tag
             ORDER BY count DESC
             LIMIT %s
@@ -416,7 +423,7 @@ def get_memories_for_report(
         cursor.execute("""
             SELECT id, source, content, tags, entities, created_at
             FROM memory
-            WHERE created_at >= CURRENT_DATE - INTERVAL '%s days'
+            WHERE created_at >= CURRENT_DATE - (%s * INTERVAL '1 day')
             ORDER BY created_at DESC
         """, (days,))
         results = cursor.fetchall()
@@ -429,5 +436,3 @@ def get_memories_for_report(
         memories.append(mem)
     
     return memories
-
-

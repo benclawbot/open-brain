@@ -2,6 +2,7 @@
 Database connection management for Open Brain.
 """
 import os
+import pathlib
 from contextlib import contextmanager
 from typing import Optional
 
@@ -9,6 +10,19 @@ import yaml
 import psycopg2
 from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
+
+
+def _detect_local_timezone() -> str:
+    """Detect the system's IANA timezone name (e.g. 'America/Los_Angeles').
+    Falls back to 'UTC' if detection fails."""
+    try:
+        link = pathlib.Path('/etc/localtime').resolve()
+        parts = str(link).split('zoneinfo/')
+        if len(parts) > 1:
+            return parts[1]
+    except Exception:
+        pass
+    return 'UTC'
 
 
 class DatabaseConfig:
@@ -30,7 +44,8 @@ class DatabaseConfig:
         self.name = os.environ.get('DB_NAME', 'openbrain')
         self.user = os.environ.get('DB_USER', 'postgres')
         self.password = os.environ.get('DB_PASSWORD', '')
-        
+        self.timezone = os.environ.get('DB_TIMEZONE', 'auto')
+
         # If no env vars, try loading from config file
         if self.host == 'localhost' and not self.password:
             try:
@@ -41,8 +56,12 @@ class DatabaseConfig:
                 self.name = config['database'].get('name', 'openbrain')
                 self.user = config['database'].get('user', 'postgres')
                 self.password = config['database'].get('password', '')
+                self.timezone = config['database'].get('timezone', 'auto')
             except Exception:
                 pass
+
+        if self.timezone == 'auto':
+            self.timezone = _detect_local_timezone()
     
     @classmethod
     def get_instance(cls, config_path: str = None) -> 'DatabaseConfig':
@@ -71,7 +90,8 @@ class ConnectionPool:
                 port=config.port,
                 database=config.name,
                 user=config.user,
-                password=config.password
+                password=config.password,
+                options=f"-c timezone={config.timezone}"
             )
     
     @contextmanager
@@ -79,12 +99,14 @@ class ConnectionPool:
         """Get a connection from the pool."""
         if self._pool is None:
             self.initialize()
-        
-        conn = self._pool.getconn()
+
+        conn = None
         try:
+            conn = self._pool.getconn()
             yield conn
         finally:
-            self._pool.putconn(conn)
+            if conn is not None:
+                self._pool.putconn(conn)
     
     @contextmanager
     def get_cursor(self, dict_cursor: bool = True):

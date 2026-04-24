@@ -12,8 +12,8 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 from pydantic import AnyUrl
 
-# Add src to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add src to path (so `from db import ...` etc. resolve correctly)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from db import connection, queries
 from db.queries import (
@@ -249,7 +249,11 @@ async def handle_memory_get_related(args: Dict) -> List[TextContent]:
     limit = args.get("limit", 5)
     
     import uuid
-    results = get_related_memories(uuid.UUID(memory_id), limit)
+    try:
+        parsed_id = uuid.UUID(memory_id)
+    except ValueError:
+        return [TextContent(type="text", text=f"Invalid memory ID: {memory_id}")]
+    results = get_related_memories(parsed_id, limit)
     
     return [TextContent(type="text", text=format_memory_list(results))]
 
@@ -299,7 +303,7 @@ def format_memory_list(memories: List[Dict]) -> str:
     for mem in memories:
         lines.append(f"ID: {mem.get('id')}")
         lines.append(f"Source: {mem.get('source')}")
-        lines.append(f"Content: {mem.get('content')[:100]}...")
+        lines.append(f"Content: {mem.get('content') or ''}")
         lines.append(f"Tags: {', '.join(mem.get('tags', []))}")
         lines.append(f"Created: {mem.get('created_at')}")
         lines.append("---")

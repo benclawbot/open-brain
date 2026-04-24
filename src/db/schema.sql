@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS memory (
 );
 
 -- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_memory_embedding ON memory USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX IF NOT EXISTS idx_memory_embedding ON memory USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_memory_entities ON memory USING gin (entities);
 CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory USING gin (tags);
 CREATE INDEX IF NOT EXISTS idx_memory_source ON memory (source);

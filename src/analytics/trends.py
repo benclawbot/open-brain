@@ -90,7 +90,7 @@ class TrendAnalyzer:
             cursor.execute("""
                 SELECT DATE(created_at) as date, COUNT(*) as count
                 FROM memory
-                WHERE created_at >= CURRENT_DATE - INTERVAL '%s days'
+                WHERE created_at >= CURRENT_DATE - (%s * INTERVAL '1 day')
                 GROUP BY DATE(created_at)
                 ORDER BY date
             """, (days,))
@@ -121,7 +121,7 @@ class TrendAnalyzer:
             cursor.execute("""
                 SELECT entities, created_at
                 FROM memory
-                WHERE created_at >= CURRENT_DATE - INTERVAL '%s weeks' weeks
+                WHERE created_at >= CURRENT_DATE - (%s * INTERVAL '1 week')
             """, (self.weeks,))
             
             # Count entity occurrences

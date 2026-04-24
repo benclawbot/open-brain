@@ -1,14 +1,16 @@
 database:
-  host: postgres
-  port: 5432
+  host: localhost
+  port: 5433
   name: openbrain
   user: postgres
   password: openbrain
+  timezone: auto
 
 embedder:
-  provider: openrouter
-  model: text-embedding-3-small
-  dimensions: 1536
+  provider: ollama
+  model: nomic-embed-text
+  dimensions: 768
+  ollama_base_url: http://localhost:11434
 
 mcp:
   host: 0.0.0.0
@@ -39,4 +41,3 @@ analytics:
 
 security:
   mode: direct
-
