@@ -2,6 +2,7 @@
 Open Brain MCP Server.
 FastMCP-based MCP server for memory operations.
 """
+import json
 import os
 import sys
 from typing import Any, Dict, List, Optional
@@ -23,7 +24,9 @@ from db.queries import (
     get_related_memories,
     get_memories_by_entity,
     get_today_memories,
-    get_memory_stats
+    get_memory_stats,
+    delete_memory,
+    update_memory,
 )
 from embedder import create_embedding
 from extractors.entities import extract_entities
@@ -147,6 +150,34 @@ async def list_tools() -> List[Tool]:
                     "days": {"type": "integer", "description": "Number of days to include", "default": 7}
                 }
             }
+        ),
+        Tool(
+            name="memory_delete",
+            description="Permanently delete a memory by its ID. Use this to remove outdated or unwanted memories.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "memory_id": {"type": "string", "description": "UUID of the memory to delete"}
+                },
+                "required": ["memory_id"]
+            }
+        ),
+        Tool(
+            name="memory_update",
+            description="Update an existing memory by ID. Only provided fields are changed — useful for marking tasks as done, correcting content, or adjusting metadata/tags/importance.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "memory_id": {"type": "string", "description": "UUID of the memory to update"},
+                    "content": {"type": "string", "description": "New content text"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "New tag list"},
+                    "tag_sources": {"type": "object", "description": "Tag sources dict"},
+                    "importance": {"type": "number", "description": "New importance score (0.0-1.0)"},
+                    "metadata": {"type": "object", "description": "New metadata dict (replaces entirely). Use to mark tasks as done: {\"status\": \"done\"}"},
+                    "entities": {"type": "object", "description": "New entities dict (replaces entirely)"}
+                },
+                "required": ["memory_id"]
+            }
         )
     ]
 
@@ -170,6 +201,10 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent]:
             return await handle_memory_stats(arguments)
         elif name == "memory_weekly_report":
             return await handle_weekly_report(arguments)
+        elif name == "memory_delete":
+            return await handle_memory_delete(arguments)
+        elif name == "memory_update":
+            return await handle_memory_update(arguments)
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
     
@@ -292,6 +327,57 @@ async def handle_weekly_report(args: Dict) -> List[TextContent]:
     report = generate_weekly_report(days)
     
     return [TextContent(type="text", text=report)]
+
+
+async def handle_memory_delete(args: Dict) -> List[TextContent]:
+    """Handle memory_delete tool."""
+    memory_id = args["memory_id"]
+
+    import uuid as _uuid
+    try:
+        parsed_id = _uuid.UUID(memory_id)
+    except ValueError:
+        return [TextContent(type="text", text=f"Invalid memory ID: {memory_id}")]
+
+    deleted = delete_memory(parsed_id)
+
+    if deleted:
+        return [TextContent(type="text", text=f"Memory {memory_id} deleted successfully.")]
+    else:
+        return [TextContent(type="text", text=f"Memory {memory_id} not found.")]
+
+
+async def handle_memory_update(args: Dict) -> List[TextContent]:
+    """Handle memory_update tool."""
+    memory_id = args["memory_id"]
+
+    import uuid as _uuid
+    try:
+        parsed_id = _uuid.UUID(memory_id)
+    except ValueError:
+        return [TextContent(type="text", text=f"Invalid memory ID: {memory_id}")]
+
+    updated = update_memory(
+        memory_id=parsed_id,
+        content=args.get("content"),
+        tags=args.get("tags"),
+        tag_sources=args.get("tag_sources"),
+        importance=args.get("importance"),
+        metadata=args.get("metadata"),
+        entities=args.get("entities"),
+    )
+
+    if updated is None:
+        return [TextContent(type="text", text=f"Memory {memory_id} not found.")]
+
+    lines = [
+        f"Memory {memory_id} updated successfully.",
+        f"Content: {updated.get('content', '')}",
+        f"Tags: {', '.join(updated.get('tags', []))}",
+        f"Importance: {updated.get('importance')}",
+        f"Metadata: {json.dumps(updated.get('metadata', {}))}",
+    ]
+    return [TextContent(type="text", text="\n".join(lines))]
 
 
 def format_memory_list(memories: List[Dict]) -> str:

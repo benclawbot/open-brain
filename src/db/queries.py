@@ -436,3 +436,83 @@ def get_memories_for_report(
         memories.append(mem)
     
     return memories
+
+
+def delete_memory(memory_id: uuid.UUID) -> bool:
+    """
+    Delete a memory by ID.
+
+    Args:
+        memory_id: UUID of the memory to delete
+
+    Returns:
+        True if a row was deleted, False if the ID was not found
+    """
+    with get_db_cursor() as cursor:
+        cursor.execute("DELETE FROM memory WHERE id = %s", (memory_id,))
+        return cursor.rowcount > 0
+
+
+def update_memory(
+    memory_id: uuid.UUID,
+    content: Optional[str] = None,
+    tags: Optional[List[str]] = None,
+    tag_sources: Optional[Dict] = None,
+    importance: Optional[float] = None,
+    metadata: Optional[Dict] = None,
+    entities: Optional[Dict] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Update an existing memory by ID.
+
+    Only the fields that are provided (not None) will be updated.
+    Returns the updated memory, or None if the ID was not found.
+
+    Args:
+        memory_id: UUID of the memory to update
+        content: New content text
+        tags: New tag list
+        tag_sources: New tag sources dict
+        importance: New importance score (0.0 – 1.0)
+        metadata: New metadata dict (replaces entire metadata)
+        entities: New entities dict (replaces entire entities)
+
+    Returns:
+        The updated memory dict, or None if not found
+    """
+    set_clauses = []
+    params: List[Any] = []
+
+    if content is not None:
+        set_clauses.append("content = %s")
+        params.append(content)
+    if tags is not None:
+        set_clauses.append("tags = %s")
+        params.append(list(tags))
+    if tag_sources is not None:
+        set_clauses.append("tag_sources = %s")
+        params.append(json.dumps(dict(tag_sources)))
+    if importance is not None:
+        set_clauses.append("importance = %s")
+        params.append(importance)
+    if metadata is not None:
+        set_clauses.append("metadata = %s")
+        params.append(json.dumps(dict(metadata)))
+    if entities is not None:
+        set_clauses.append("entities = %s")
+        params.append(json.dumps(dict(entities)))
+
+    if not set_clauses:
+        # Nothing to update – just return the existing record
+        return get_memory_by_id(memory_id)
+
+    params.append(str(memory_id))
+
+    query = f"UPDATE memory SET {', '.join(set_clauses)} WHERE id = %s"
+
+    with get_db_cursor() as cursor:
+        cursor.execute(query, tuple(params))
+        if cursor.rowcount == 0:
+            return None
+
+    return get_memory_by_id(memory_id)
