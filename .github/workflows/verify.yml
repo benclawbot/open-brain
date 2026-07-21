@@ -41,11 +41,12 @@ jobs:
       - name: Test
         run: pytest -q
       - name: Build package
-        run: |
-          pip install build
-          python -m build
-      - name: Smoke-test wheel
+        run: python -m build
+      - name: Smoke-test wheel and Hermes provider
         run: |
           python -m venv /tmp/openbrain-smoke
           /tmp/openbrain-smoke/bin/pip install dist/*.whl
           /tmp/openbrain-smoke/bin/openbrain --version
+          /tmp/openbrain-smoke/bin/openbrain install-hermes --hermes-home /tmp/hermes-smoke
+          test -f /tmp/hermes-smoke/plugins/openbrain/plugin.yaml
+          test -f /tmp/hermes-smoke/plugins/openbrain/__init__.py
