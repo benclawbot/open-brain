@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openbrain"
 version = "0.1.0"
-description = "Standalone personal memory management system with semantic search"
+description = "Shared personal memory, agent continuity, and actionable context"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "Tom", email = "tom@example.com"}
 ]
-keywords = ["memory", "embeddings", "semantic-search", "ai", "postgres", "pgvector"]
+keywords = ["memory", "agents", "semantic-search", "mcp", "postgres", "pgvector"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -45,6 +45,7 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "black>=24.1.0",
     "ruff>=0.2.0",
+    "build>=1.2.0",
 ]
 
 [project.scripts]
@@ -52,9 +53,6 @@ openbrain = "cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools]
-py-modules = ["cli", "embedder"]
 
 [tool.setuptools.package-data]
 config = ["*.yaml", "*.yml"]
