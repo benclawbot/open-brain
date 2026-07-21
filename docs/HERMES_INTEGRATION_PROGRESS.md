@@ -6,7 +6,7 @@ This file is the durable implementation ledger for the Open Brain × Hermes work
 
 ## Overall status
 
-Current phase: **Bootstrap import foundation**
+Current phase: **Bootstrap import execution**
 
 ### Completed
 
@@ -31,28 +31,31 @@ Current phase: **Bootstrap import foundation**
 - [x] Add safe Hermes `USER.md` and `MEMORY.md` discovery.
 - [x] Preserve file path, section, ordinal, line form, source fingerprint, and authority on imported candidates.
 - [x] Keep imported records as candidates for reconciliation rather than silently promoting every line as truth.
-- [x] Add bootstrap-import parser tests.
+- [x] Persist import runs, per-record outcomes, counters, errors, and cursor checkpoints.
+- [x] Add dry-run and staged-import execution modes.
+- [x] Reject unsafe resume when the source fingerprint changes.
+- [x] Skip duplicate source records within a resumed run.
+- [x] Expose `POST /v1/imports/hermes/markdown`.
+- [x] Add isolated runner tests for preview, resume safety, and duplicate handling.
 
 ### In progress
 
-- [ ] Persist import runs and import-record outcomes through the existing ledger tables.
-- [ ] Add dry-run and resumable import orchestration.
 - [ ] Add context-file discovery with explicit allowlists.
 - [ ] Add session summary/transcript import.
-- [ ] Add database-backed tests for duplicate event delivery and payload preservation.
-- [ ] Add database-backed tests for duplicate identity resolution and session initialization.
+- [ ] Add skills and cron discovery.
+- [ ] Add provider adapter capability declarations and provider-specific normalization.
+- [ ] Add database-backed tests for import-run persistence and concurrent duplicate delivery.
 - [ ] Add structured active project/task/decision context lookup.
 
 ### Next implementation slices
 
 #### Complete Slice 3 — bootstrap import
 
-- import-run persistence and checkpoints
-- dry-run, resume, and rollback metadata
 - context-file importer
 - session summary/transcript importer
 - skills and cron discovery
 - provider adapter capability declarations
+- import rollback/tombstone metadata
 
 #### Slice 4 — actionable context
 
@@ -84,6 +87,7 @@ Current phase: **Bootstrap import foundation**
 - `POST /v1/identities/resolve`
 - `POST /v1/sessions/open`
 - `POST /v1/sessions/{session_id}/close`
+- `POST /v1/imports/hermes/markdown`
 
 ## Validation status
 
@@ -101,7 +105,8 @@ Database integration tests should run against PostgreSQL with pgvector enabled.
 
 - Migration `002_continuity_foundation.sql` is required before any `/v1` continuity endpoint is used.
 - Existing startup initializes the connection pool but does not automatically apply migrations; migration execution remains explicit for safety.
-- Database-backed idempotency and identity-link collision tests are still missing.
+- Database-backed idempotency, identity-link collision, and import-run concurrency tests are still missing.
 - External identity aliases must never be silently reassigned between canonical users; this requires an integration test under concurrent delivery.
 - Markdown imports preserve curated authority but still require reconciliation to distinguish durable facts, instructions, notes, and obsolete content.
+- Dry-run records are intentionally persisted in the import ledger for auditability, but do not create assertions or mutate source systems.
 - The Hermes provider has not been started; service contracts are being stabilized first.
