@@ -1,5 +1,5 @@
 name: openbrain
-version: 0.1.0
+version: 0.2.0
 description: Shared personal memory and cross-agent continuity through Open Brain
 hooks:
   - on_session_end
