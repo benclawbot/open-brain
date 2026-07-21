@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from db.connection import get_db_cursor
-from db.context_queries import save_context_feedback
+from src.db.connection import get_db_cursor
+from src.db.context_queries import save_context_feedback
 
 
 def _counters(assertion_id: str) -> tuple[int, int, int]:
