@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Apply packaged Open Brain SQL migrations."""
 
-from db.migrate import apply_migrations
+from src.db.migrate import apply_migrations
 
 
 if __name__ == "__main__":
