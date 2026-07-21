@@ -48,7 +48,7 @@ def update_cmd(skip_migrations: bool = False) -> int:
 
     if not skip_migrations:
         try:
-            from db.migrate import apply_migrations
+            from src.db.migrate import apply_migrations
 
             applied = apply_migrations()
         except Exception as exc:
