@@ -8,7 +8,6 @@ import shutil
 import subprocess
 import sys
 from importlib.metadata import PackageNotFoundError, version
-from importlib.resources import files
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -76,12 +75,19 @@ def install_hermes_cmd(hermes_home: str | None = None, force: bool = False) -> i
         )
         return 1
 
-    source = files("openbrain_hermes_plugin")
+    source = Path(__file__).resolve().parents[1] / "openbrain_hermes_plugin"
+    required = ("__init__.py", "plugin.yaml", "README.md")
+    missing = [name for name in required if not (source / name).is_file()]
+    if missing:
+        print(
+            "Installed package is missing Hermes provider files: " + ", ".join(missing),
+            file=sys.stderr,
+        )
+        return 1
+
     destination.mkdir(parents=True, exist_ok=True)
-    for name in ("__init__.py", "plugin.yaml", "README.md"):
-        resource = source.joinpath(name)
-        with resource.open("rb") as input_handle, (destination / name).open("wb") as output_handle:
-            shutil.copyfileobj(input_handle, output_handle)
+    for name in required:
+        shutil.copy2(source / name, destination / name)
 
     print(f"Installed the Open Brain Hermes provider at {destination}")
     print("Set OPENBRAIN_URL, then run `hermes memory setup` and select `openbrain`.")
