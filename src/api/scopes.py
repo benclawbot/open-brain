@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from continuity.scopes import IdentityRecord, IdentityRef, SessionOpen, SessionRecord
 from db.scope_queries import close_session, open_session, resolve_identity
 
-router = APIRouter(prefix="/v1", tags=["scopes"])
+router = APIRouter(tags=["scopes"])
 
 
 class SessionClose(BaseModel):
