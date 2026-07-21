@@ -6,7 +6,7 @@ This file is the durable implementation ledger for the Open Brain × Hermes work
 
 ## Overall status
 
-Current phase: **Foundation / event ingestion**
+Current phase: **Identity and session lineage**
 
 ### Completed
 
@@ -19,23 +19,22 @@ Current phase: **Foundation / event ingestion**
 - [x] Expose `POST /v1/events` through the FastAPI application.
 - [x] Add a checksum-protected additive SQL migration runner.
 - [x] Add initial contract tests for event validation, scope, and authority.
+- [x] Add canonical user, agent, workspace, and platform-user identity contracts.
+- [x] Add optional external identity aliases for stable cross-gateway resolution.
+- [x] Implement idempotent identity resolution and metadata merging.
+- [x] Implement session opening and closing APIs.
+- [x] Preserve reset/resume/branch/compression/rewind lineage.
+- [x] Reject branch, resume, or compression lineage when the required parent is missing.
+- [x] Add identity and session contract tests.
 
 ### In progress
 
 - [ ] Add database-backed tests for duplicate event delivery and payload preservation.
-- [ ] Add canonical identity resolution and cross-platform identity linking.
-- [ ] Add Hermes session creation and lineage transitions.
+- [ ] Add database-backed tests for duplicate identity resolution and session initialization.
 - [ ] Add structured active project/task/decision context lookup.
+- [ ] Add bootstrap import adapter protocol and Hermes built-in-memory importers.
 
 ### Next implementation slices
-
-#### Slice 2 — identity and sessions
-
-- canonical user, agent, workspace, and platform-user resolution
-- stable cross-gateway user identity
-- idempotent session establishment
-- reset/resume/branch/compression/rewind lineage
-- tests for session switching and duplicate initialization
 
 #### Slice 3 — bootstrap import
 
@@ -70,6 +69,13 @@ Current phase: **Foundation / event ingestion**
 - outcome evaluation and repeated-pattern detection
 - improvement proposals with explicit authority boundaries
 
+## API added so far
+
+- `POST /v1/events`
+- `POST /v1/identities/resolve`
+- `POST /v1/sessions/open`
+- `POST /v1/sessions/{session_id}/close`
+
 ## Validation status
 
 The code has been reviewed structurally through the connected repository interface. Runtime tests have **not yet been executed in this environment** because a local checkout and GitHub CLI are unavailable. The draft PR must remain unmerged until CI or a local environment runs:
@@ -84,7 +90,8 @@ Database integration tests should run against PostgreSQL with pgvector enabled.
 
 ## Known risks
 
-- The new API requires migration `002_continuity_foundation.sql` before `/v1/events` is used.
+- Migration `002_continuity_foundation.sql` is required before any `/v1` continuity endpoint is used.
 - Existing startup initializes the connection pool but does not automatically apply migrations; migration execution remains explicit for safety.
-- Database-backed idempotency tests are still missing.
+- Database-backed idempotency and identity-link collision tests are still missing.
+- External identity aliases must never be silently reassigned between canonical users; this requires an integration test under concurrent delivery.
 - The Hermes provider has not been started; service contracts are being stabilized first.
