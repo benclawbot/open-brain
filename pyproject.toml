@@ -49,12 +49,13 @@ dev = [
 ]
 
 [project.scripts]
-openbrain = "cli:main"
+openbrain = "src.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["src*", "config*"]
 
 [tool.setuptools.package-data]
 config = ["*.yaml", "*.yml"]
-db = ["migrations/*.sql"]
-openbrain_hermes_plugin = ["plugin.yaml", "README.md"]
+"src.db" = ["migrations/*.sql"]
+"src.openbrain_hermes_plugin" = ["plugin.yaml", "README.md"]
