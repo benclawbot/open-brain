@@ -35,12 +35,14 @@ def discover_allowlisted_context(
             raise ValueError(f"unsupported context file type: {candidate_path.suffix}")
 
         if candidate_path.suffix.lower() in {".md", ".markdown"}:
-            discovered.extend(
-                HermesMarkdownImporter(
-                    candidate_path,
-                    ImportSource.HERMES_CONTEXT,
-                ).discover()
-            )
+            markdown_candidates = HermesMarkdownImporter(
+                candidate_path,
+                ImportSource.HERMES_CONTEXT,
+            ).discover()
+            for candidate in markdown_candidates:
+                candidate.metadata["allowlisted"] = True
+                candidate.metadata["allowlist_entry"] = relative
+                discovered.append(candidate)
             continue
 
         content = candidate_path.read_text(encoding="utf-8").strip()
@@ -58,6 +60,7 @@ def discover_allowlisted_context(
                     "source_path": str(candidate_path),
                     "source_fingerprint": hash_content(candidate_path.read_bytes()),
                     "allowlisted": True,
+                    "allowlist_entry": relative,
                 },
             )
         )
