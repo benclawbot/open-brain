@@ -51,6 +51,21 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION openbrain_bump_subject_context(p_subject_type TEXT, p_subject_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF p_subject_type = 'task' THEN
+        PERFORM openbrain_bump_task_context(p_subject_id);
+    ELSIF p_subject_type = 'project' THEN
+        PERFORM openbrain_bump_project_context(p_subject_id);
+    ELSIF p_subject_type = 'user' THEN
+        PERFORM openbrain_bump_context_revision('user', p_subject_id);
+    END IF;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION openbrain_project_context_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -120,34 +135,18 @@ CREATE OR REPLACE FUNCTION openbrain_assertion_context_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
-DECLARE
-    row_subject_type TEXT;
-    row_subject_id UUID;
 BEGIN
-    row_subject_type := CASE WHEN TG_OP = 'DELETE' THEN OLD.subject_type ELSE NEW.subject_type END;
-    row_subject_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.subject_id ELSE NEW.subject_id END;
-
-    IF row_subject_type IN ('user', 'project', 'task') THEN
-        PERFORM openbrain_bump_context_revision(row_subject_type, row_subject_id);
-        IF row_subject_type = 'task' THEN
-            PERFORM openbrain_bump_task_context(row_subject_id);
-        ELSIF row_subject_type = 'project' THEN
-            PERFORM openbrain_bump_project_context(row_subject_id);
-        END IF;
+    IF TG_OP = 'DELETE' THEN
+        PERFORM openbrain_bump_subject_context(OLD.subject_type, OLD.subject_id);
+        RETURN OLD;
     END IF;
 
+    PERFORM openbrain_bump_subject_context(NEW.subject_type, NEW.subject_id);
     IF TG_OP = 'UPDATE'
-       AND (OLD.subject_type, OLD.subject_id) IS DISTINCT FROM (NEW.subject_type, NEW.subject_id)
-       AND OLD.subject_type IN ('user', 'project', 'task') THEN
-        PERFORM openbrain_bump_context_revision(OLD.subject_type, OLD.subject_id);
-        IF OLD.subject_type = 'task' THEN
-            PERFORM openbrain_bump_task_context(OLD.subject_id);
-        ELSIF OLD.subject_type = 'project' THEN
-            PERFORM openbrain_bump_project_context(OLD.subject_id);
-        END IF;
+       AND (OLD.subject_type, OLD.subject_id) IS DISTINCT FROM (NEW.subject_type, NEW.subject_id) THEN
+        PERFORM openbrain_bump_subject_context(OLD.subject_type, OLD.subject_id);
     END IF;
-
-    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+    RETURN NEW;
 END;
 $$;
 
