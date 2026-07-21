@@ -6,7 +6,10 @@ import json
 from datetime import datetime, timezone
 from uuid import UUID
 
-from db.connection import get_db_cursor
+try:
+    from .connection import get_db_cursor
+except ImportError:  # Support legacy execution with src/ directly on sys.path.
+    from db.connection import get_db_cursor
 
 
 def get_scope_revisions(user_identity_id: UUID | None, project_id: UUID | None, task_id: UUID | None) -> dict[str, int]:
