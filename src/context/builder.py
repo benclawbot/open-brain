@@ -5,8 +5,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from context.models import ContextItem, ContextKind, ContextPacket, ContextRequest, TrustLabel
-from db.context_queries import fetch_structured_context, get_scope_revisions
+try:
+    from .models import ContextItem, ContextKind, ContextPacket, ContextRequest, TrustLabel
+    from ..db.context_queries import fetch_structured_context, get_scope_revisions
+except ImportError:  # Support legacy execution with src/ directly on sys.path.
+    from context.models import ContextItem, ContextKind, ContextPacket, ContextRequest, TrustLabel
+    from db.context_queries import fetch_structured_context, get_scope_revisions
 
 
 _DIVERSITY_ORDER = (
