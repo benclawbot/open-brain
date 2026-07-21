@@ -1,12 +1,12 @@
 # Hermes Integration Progress
 
-Branch: `agent/hermes-foundation`
+Branch: `agent/provider-normalization`
 
 This file is the durable implementation ledger for the Open Brain × Hermes work. Update it whenever a meaningful slice lands.
 
 ## Overall status
 
-Current phase: **Release validation**
+Current phase: **Provider normalization**
 
 ### Completed
 
@@ -38,10 +38,15 @@ Current phase: **Release validation**
 - [x] Correct the package layout so CLI modules, SQL migrations, and Hermes plugin assets ship in installed distributions.
 - [x] Add wheel, migration, CLI, and Hermes plugin smoke checks in GitHub Actions.
 - [x] Rewrite the README with complete capabilities, architecture, installation, Hermes setup, generic agent setup, updates, APIs, and operational boundaries.
+- [x] Declare external-provider import capabilities.
+- [x] Add read-only Mem0, Honcho, and Hindsight export normalization.
+- [x] Preserve provider IDs, source instances, timestamps, confidence, entities, relationships, custom metadata, and raw-record hashes.
+- [x] Add provider discovery and resumable dry-run/staged import APIs.
 
 ### Deferred maturity work
 
-- [ ] Add provider-specific normalization for Mem0, Honcho, Hindsight, and other external memory systems.
+- [ ] Add provider-specific normalization for additional external memory systems.
+- [ ] Add direct authenticated provider API clients; the current slice consumes exported/API-supplied records.
 - [ ] Add rollback/tombstone metadata for staged imports.
 - [ ] Expand database concurrency tests for event, identity, session, import, and context races.
 - [ ] Increment context revisions automatically on every project/task/decision mutation.
@@ -82,6 +87,8 @@ openbrain install-hermes --force
 - `POST /v1/sessions/open`
 - `POST /v1/sessions/{session_id}/close`
 - `POST /v1/imports/hermes/markdown`
+- `GET /v1/imports/providers`
+- `POST /v1/imports/providers`
 - `POST /v1/context`
 - `POST /v1/context/feedback`
 
@@ -89,7 +96,7 @@ The existing semantic-memory, analytics, MCP, CLI, dashboard, and report interfa
 
 ## Validation status
 
-GitHub Actions now validates:
+GitHub Actions validates:
 
 ```bash
 pip install -e '.[dev]'
@@ -105,12 +112,13 @@ openbrain --version
 openbrain install-hermes --hermes-home /tmp/hermes-smoke
 ```
 
-The branch must not merge until the latest `Verify` run passes.
+PR #18 must not merge until the latest `Verify` run passes.
 
 ## Known risks
 
 - Migration `002_continuity_foundation.sql` is required before continuity endpoints are used.
 - Imported records still require reconciliation to distinguish durable facts, instructions, notes, obsolete content, and provider inference.
+- Provider adapters currently normalize caller-supplied exports/API records and do not hold provider credentials.
 - Dry-run records are intentionally persisted for auditability but do not create assertions or mutate source systems.
 - The installer tracks the default branch unless the user pins a reviewed release tag.
 - This remains alpha software despite the completed first-party Hermes integration.
