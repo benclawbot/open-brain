@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from pruning.assertions import PruningCandidate, PruningReason, propose_pruning
+from src.pruning.assertions import PruningCandidate, PruningReason, propose_pruning
 
 NOW = datetime(2026, 7, 21, tzinfo=timezone.utc)
 
