@@ -6,7 +6,7 @@ This file is the durable implementation ledger for the Open Brain × Hermes work
 
 ## Overall status
 
-Current phase: **Actionable context and distribution**
+Current phase: **Release validation**
 
 ### Completed
 
@@ -24,59 +24,58 @@ Current phase: **Actionable context and distribution**
 - [x] Add structured project/task/decision/assertion/outcome retrieval.
 - [x] Add revision-aware, token-bounded context packets with trust and freshness labels.
 - [x] Add context feedback contracts and APIs.
+- [x] Add context contract tests.
+- [x] Implement the upstream-compatible `OpenBrainMemoryProvider`.
+- [x] Add cached prefetch and background `queue_prefetch`.
+- [x] Add non-blocking `sync_turn` event delivery.
+- [x] Add `openbrain_recall` and `openbrain_remember` tools.
+- [x] Add session switch, pre-compress, memory-write, delegation, session-end, and shutdown hooks.
+- [x] Add deterministic provider idempotency keys and canonical Open Brain session scope.
+- [x] Add a durable JSONL spool and replay when Open Brain is unavailable.
 - [x] Add a one-line pipx installer.
+- [x] Add `openbrain install-hermes` for standalone Hermes plugin installation.
 - [x] Add `openbrain update` with packaged, checksum-protected migrations.
-- [x] Correct the package layout so CLI modules and SQL migrations ship in installed distributions.
+- [x] Correct the package layout so CLI modules, SQL migrations, and Hermes plugin assets ship in installed distributions.
+- [x] Add wheel, migration, CLI, and Hermes plugin smoke checks in GitHub Actions.
+- [x] Rewrite the README with complete capabilities, architecture, installation, Hermes setup, generic agent setup, updates, APIs, and operational boundaries.
 
-### In progress
+### Deferred maturity work
 
-- [ ] Add context packet builder tests and API tests.
-- [ ] Add provider adapter capability declarations and provider-specific normalization.
+- [ ] Add provider-specific normalization for Mem0, Honcho, Hindsight, and other external memory systems.
 - [ ] Add rollback/tombstone metadata for staged imports.
-- [ ] Add database-backed tests for event, identity, session, import, and context concurrency.
-- [ ] Add update compatibility checks and documented rollback behavior.
+- [ ] Expand database concurrency tests for event, identity, session, import, and context races.
+- [ ] Increment context revisions automatically on every project/task/decision mutation.
+- [ ] Aggregate retrieval feedback into assertion usefulness and harmfulness counters.
+- [ ] Add packet diversity policies beyond the current importance and token budgets.
+- [ ] Add lifecycle automation for consolidation, demotion, archival, and tombstones.
+- [ ] Add evidence-backed self-improvement proposals and evaluation outcomes.
 
-## Next implementation slices
+## Distribution
 
-### Complete Slice 4 — actionable context
-
-- context API validation and tests
-- revision invalidation on project/task/decision mutations
-- packet diversity limits
-- feedback aggregation into assertion usefulness counters
-
-### Slice 5 — Hermes provider
-
-- upstream-compatible `OpenBrainMemoryProvider`
-- durable local spool
-- cached `prefetch` and background `queue_prefetch`
-- `sync_turn`, `on_memory_write`, `on_session_switch`, `on_pre_compress`, `on_delegation`, and `on_session_end`
-- graceful degradation when Open Brain is unavailable
-
-### Distribution and updates
-
-One-line installation target:
+One-line installation:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
 ```
 
-Update target:
+Native Hermes provider:
+
+```bash
+openbrain install-hermes
+export OPENBRAIN_URL=http://127.0.0.1:8000
+hermes memory setup
+```
+
+Updates:
 
 ```bash
 openbrain update
+openbrain install-hermes --force
 ```
 
-Before release, the installer URL must point to a reviewed default-branch script or a pinned release tag. Updates must check compatibility, apply only additive migrations, preserve the migration checksum ledger, and provide a documented rollback path.
+`openbrain update` applies only packaged additive migrations whose checksums are not already present in `schema_migration`. Existing data is not deleted when a migration fails.
 
-### Slice 6 — lifecycle and self-improvement
-
-- consolidation and canonical assertion reconciliation
-- demotion, archival, tombstones, and retention policies
-- outcome evaluation and repeated-pattern detection
-- improvement proposals with explicit authority boundaries
-
-## API added so far
+## APIs
 
 - `POST /v1/events`
 - `POST /v1/identities/resolve`
@@ -86,32 +85,32 @@ Before release, the installer URL must point to a reviewed default-branch script
 - `POST /v1/context`
 - `POST /v1/context/feedback`
 
+The existing semantic-memory, analytics, MCP, CLI, dashboard, and report interfaces remain available.
+
 ## Validation status
 
-The code has been reviewed structurally through the connected repository interface. Runtime tests have **not yet been executed in this environment** because a local checkout and GitHub CLI are unavailable. The draft PR must remain unmerged until CI or a local environment runs:
+GitHub Actions now validates:
 
 ```bash
 pip install -e '.[dev]'
 python scripts/migrate.py
 pytest -q
+python -m build
 ```
 
-The packaged install path must additionally validate:
+The built wheel is installed into a fresh virtual environment. CI then verifies:
 
 ```bash
-pipx install 'git+https://github.com/benclawbot/open-brain.git@agent/hermes-foundation'
 openbrain --version
-openbrain update --skip-migrations
+openbrain install-hermes --hermes-home /tmp/hermes-smoke
 ```
 
-Database integration tests should run against PostgreSQL with pgvector enabled.
+The branch must not merge until the latest `Verify` run passes.
 
 ## Known risks
 
-- Migration `002_continuity_foundation.sql` is required before any `/v1` continuity endpoint is used.
-- Database-backed idempotency, identity-link collision, import-run, and context tests are still missing.
-- External identity aliases must never be silently reassigned between canonical users.
+- Migration `002_continuity_foundation.sql` is required before continuity endpoints are used.
 - Imported records still require reconciliation to distinguish durable facts, instructions, notes, obsolete content, and provider inference.
 - Dry-run records are intentionally persisted for auditability but do not create assertions or mutate source systems.
-- The one-line installer must not be advertised from `master` until the PR is merged and installation smoke tests pass.
-- The Hermes provider has not been started; service contracts are being stabilized first.
+- The installer tracks the default branch unless the user pins a reviewed release tag.
+- This remains alpha software despite the completed first-party Hermes integration.
