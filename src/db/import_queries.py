@@ -141,3 +141,83 @@ def seen_external_hashes(run_id: UUID) -> set[tuple[str, str]]:
             (run_id,),
         )
         return {(row["external_id"], row["external_hash"]) for row in cursor.fetchall()}
+
+
+def rollback_staged_import(
+    run_id: UUID,
+    *,
+    actor: str,
+    reason: str,
+) -> dict[str, Any]:
+    """Tombstone every unpromoted staged record in an import run.
+
+    Rollback is intentionally metadata-only: source data and audit records remain.
+    Any record linked to a canonical object blocks rollback to avoid hiding promoted
+    knowledge behind an import-level operation.
+    """
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM import_run WHERE id = %s FOR UPDATE", (run_id,))
+        run = cursor.fetchone()
+        if run is None:
+            raise ValueError(f"import run not found: {run_id}")
+
+        config = run.get("config") or {}
+        if isinstance(config, str):
+            config = json.loads(config)
+        if bool(config.get("dry_run")):
+            raise ValueError("dry-run imports cannot be rolled back")
+        if run.get("rolled_back_at") is not None:
+            raise ValueError("import run is already rolled back")
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM import_record
+            WHERE import_run_id = %s
+              AND operation = 'stage'
+              AND object_id IS NOT NULL
+              AND rolled_back_at IS NULL
+            """,
+            (run_id,),
+        )
+        promoted = int(cursor.fetchone()["count"])
+        if promoted:
+            raise ValueError("import run contains promoted records and cannot be rolled back")
+
+        tombstone = json.dumps({
+            "kind": "staged_import_rollback",
+            "actor": actor,
+            "reason": reason,
+        })
+        cursor.execute(
+            """
+            UPDATE import_record
+            SET rolled_back_at = NOW(),
+                rolled_back_by = %s,
+                rollback_reason = %s,
+                tombstone = %s::jsonb,
+                result = 'rolled_back'
+            WHERE import_run_id = %s
+              AND operation = 'stage'
+              AND rolled_back_at IS NULL
+            RETURNING id
+            """,
+            (actor, reason, tombstone, run_id),
+        )
+        rolled_back_records = len(cursor.fetchall())
+
+        cursor.execute(
+            """
+            UPDATE import_run
+            SET status = 'rolled_back',
+                rolled_back_at = NOW(),
+                rolled_back_by = %s,
+                rollback_reason = %s
+            WHERE id = %s
+            RETURNING *
+            """,
+            (actor, reason, run_id),
+        )
+        updated = dict(cursor.fetchone())
+        updated["rolled_back_records"] = rolled_back_records
+        return updated

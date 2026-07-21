@@ -1,4 +1,4 @@
-"""REST endpoints for previewing and staging bootstrap imports."""
+"""REST endpoints for previewing, staging, and rolling back imports."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from db.import_queries import rollback_staged_import
 from importers.base import ImportSource
 from importers.hermes_markdown import HermesMarkdownImporter
 from importers.providers import provider_adapter, provider_descriptors
@@ -34,6 +35,23 @@ class ProviderImportRequest(BaseModel):
     source_instance: str | None = Field(default=None, max_length=512)
     dry_run: bool = True
     resume_run_id: UUID | None = None
+
+
+class ImportRollbackRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    actor: str = Field(min_length=1, max_length=255)
+    reason: str = Field(min_length=1, max_length=2000)
+
+
+class ImportRollbackResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: UUID
+    status: str
+    rolled_back_by: str
+    rollback_reason: str
+    rolled_back_records: int
 
 
 @router.post(
@@ -94,6 +112,21 @@ async def import_provider_records(request: ProviderImportRequest) -> ImportSumma
             dry_run=request.dry_run,
             resume_run_id=request.resume_run_id,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post(
+    "/imports/{run_id}/rollback",
+    response_model=ImportRollbackResponse,
+    summary="Tombstone every unpromoted staged record in an import run",
+)
+async def rollback_import(run_id: UUID, request: ImportRollbackRequest) -> ImportRollbackResponse:
+    try:
+        result = rollback_staged_import(run_id, actor=request.actor, reason=request.reason)
+        return ImportRollbackResponse.model_validate(result)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
