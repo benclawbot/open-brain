@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Iterable
 from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
 
 from db.import_queries import (
     create_import_run,
@@ -13,11 +13,12 @@ from db.import_queries import (
     seen_external_hashes,
     update_import_run,
 )
-from importers.base import ImportAdapter, ImportCandidate
+from importers.base import ImportAdapter
 
 
-@dataclass(frozen=True)
-class ImportSummary:
+class ImportSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     run_id: UUID
     status: str
     dry_run: bool
@@ -38,7 +39,7 @@ def run_import(
 ) -> ImportSummary:
     """Execute one deterministic import pass.
 
-    Candidates are first persisted only as import records. Promotion into assertions,
+    Candidates are persisted only as import records. Promotion into assertions,
     projects, tasks, or decisions is deliberately deferred to reconciliation.
     """
     if resume_run_id:
@@ -67,12 +68,7 @@ def run_import(
         run_id = UUID(str(created["id"]))
 
     seen = seen_external_hashes(run_id)
-    counters = {
-        "seen": 0,
-        "imported": 0,
-        "merged": 0,
-        "rejected": 0,
-    }
+    counters = {"seen": 0, "imported": 0, "merged": 0, "rejected": 0}
     cursor = {"ordinal": 0}
 
     try:
@@ -84,12 +80,11 @@ def run_import(
                 counters["merged"] += 1
                 continue
 
-            result = "previewed" if dry_run else "staged"
             inserted = record_import_candidate(
                 run_id,
                 candidate,
                 operation="preview" if dry_run else "stage",
-                result=result,
+                result="previewed" if dry_run else "staged",
             )
             if inserted:
                 counters["imported"] += 1
