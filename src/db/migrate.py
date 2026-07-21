@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from importlib.resources import files
 
-from db.connection import get_db_connection, init_db
+from src.db.connection import get_db_connection, init_db
 
 
 def _ensure_ledger(cursor) -> None:
@@ -23,7 +23,7 @@ def _ensure_ledger(cursor) -> None:
 def apply_migrations() -> list[str]:
     init_db()
     applied: list[str] = []
-    migration_root = files("db.migrations")
+    migration_root = files("src.db.migrations")
     migration_files = sorted(
         item for item in migration_root.iterdir() if item.name.endswith(".sql")
     )
