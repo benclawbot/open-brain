@@ -6,7 +6,7 @@ This file is the durable implementation ledger for the Open Brain × Hermes work
 
 ## Overall status
 
-Current phase: **Identity and session lineage**
+Current phase: **Bootstrap import foundation**
 
 ### Completed
 
@@ -26,24 +26,33 @@ Current phase: **Identity and session lineage**
 - [x] Preserve reset/resume/branch/compression/rewind lineage.
 - [x] Reject branch, resume, or compression lineage when the required parent is missing.
 - [x] Add identity and session contract tests.
+- [x] Define a provider-neutral, resumable import adapter contract.
+- [x] Add deterministic external IDs and SHA-256 source hashes.
+- [x] Add safe Hermes `USER.md` and `MEMORY.md` discovery.
+- [x] Preserve file path, section, ordinal, line form, source fingerprint, and authority on imported candidates.
+- [x] Keep imported records as candidates for reconciliation rather than silently promoting every line as truth.
+- [x] Add bootstrap-import parser tests.
 
 ### In progress
 
+- [ ] Persist import runs and import-record outcomes through the existing ledger tables.
+- [ ] Add dry-run and resumable import orchestration.
+- [ ] Add context-file discovery with explicit allowlists.
+- [ ] Add session summary/transcript import.
 - [ ] Add database-backed tests for duplicate event delivery and payload preservation.
 - [ ] Add database-backed tests for duplicate identity resolution and session initialization.
 - [ ] Add structured active project/task/decision context lookup.
-- [ ] Add bootstrap import adapter protocol and Hermes built-in-memory importers.
 
 ### Next implementation slices
 
-#### Slice 3 — bootstrap import
+#### Complete Slice 3 — bootstrap import
 
-- import ledger and adapter protocol
-- Hermes `USER.md` importer
-- Hermes `MEMORY.md` importer
+- import-run persistence and checkpoints
+- dry-run, resume, and rollback metadata
 - context-file importer
 - session summary/transcript importer
-- dry-run, resume, source hashes, and rollback metadata
+- skills and cron discovery
+- provider adapter capability declarations
 
 #### Slice 4 — actionable context
 
@@ -94,4 +103,5 @@ Database integration tests should run against PostgreSQL with pgvector enabled.
 - Existing startup initializes the connection pool but does not automatically apply migrations; migration execution remains explicit for safety.
 - Database-backed idempotency and identity-link collision tests are still missing.
 - External identity aliases must never be silently reassigned between canonical users; this requires an integration test under concurrent delivery.
+- Markdown imports preserve curated authority but still require reconciliation to distinguish durable facts, instructions, notes, and obsolete content.
 - The Hermes provider has not been started; service contracts are being stabilized first.
