@@ -6,6 +6,7 @@ from api.consolidation import router as consolidation_router
 from api.context import router as context_router
 from api.imports import router as imports_router
 from api.lifecycle import router as lifecycle_router
+from api.pruning import router as pruning_router
 from api.scopes import router as scopes_router
 from continuity.models import EventCreate, EventRecord
 from db.continuity_queries import ingest_event
@@ -16,6 +17,7 @@ router.include_router(imports_router)
 router.include_router(context_router)
 router.include_router(lifecycle_router)
 router.include_router(consolidation_router)
+router.include_router(pruning_router)
 
 
 @router.post(
