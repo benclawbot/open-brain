@@ -1,12 +1,12 @@
 # Hermes Integration Progress
 
-Branch: `agent/provider-normalization`
+Branch: `agent/context-revision-triggers`
 
 This file is the durable implementation ledger for the Open Brain × Hermes work. Update it whenever a meaningful slice lands.
 
 ## Overall status
 
-Current phase: **Provider normalization**
+Current phase: **Automatic context invalidation**
 
 ### Completed
 
@@ -42,14 +42,15 @@ Current phase: **Provider normalization**
 - [x] Add read-only Mem0, Honcho, and Hindsight export normalization.
 - [x] Preserve provider IDs, source instances, timestamps, confidence, entities, relationships, custom metadata, and raw-record hashes.
 - [x] Add provider discovery and resumable dry-run/staged import APIs.
+- [x] Add guarded staged-import rollback with audit-preserving tombstones.
+- [x] Add automatic context-revision invalidation for projects, tasks, decisions, outcomes, and scoped assertions.
+- [x] Propagate task changes to project and owner-user context revisions atomically.
 
 ### Deferred maturity work
 
 - [ ] Add provider-specific normalization for additional external memory systems.
 - [ ] Add direct authenticated provider API clients; the current slice consumes exported/API-supplied records.
-- [ ] Add rollback/tombstone metadata for staged imports.
 - [ ] Expand database concurrency tests for event, identity, session, import, and context races.
-- [ ] Increment context revisions automatically on every project/task/decision mutation.
 - [ ] Aggregate retrieval feedback into assertion usefulness and harmfulness counters.
 - [ ] Add packet diversity policies beyond the current importance and token budgets.
 - [ ] Add lifecycle automation for consolidation, demotion, archival, and tombstones.
@@ -89,6 +90,7 @@ openbrain install-hermes --force
 - `POST /v1/imports/hermes/markdown`
 - `GET /v1/imports/providers`
 - `POST /v1/imports/providers`
+- `POST /v1/imports/{run_id}/rollback`
 - `POST /v1/context`
 - `POST /v1/context/feedback`
 
@@ -112,7 +114,7 @@ openbrain --version
 openbrain install-hermes --hermes-home /tmp/hermes-smoke
 ```
 
-PR #18 must not merge until the latest `Verify` run passes.
+The current feature branch must not merge until the latest `Verify` run passes.
 
 ## Known risks
 
@@ -120,5 +122,6 @@ PR #18 must not merge until the latest `Verify` run passes.
 - Imported records still require reconciliation to distinguish durable facts, instructions, notes, obsolete content, and provider inference.
 - Provider adapters currently normalize caller-supplied exports/API records and do not hold provider credentials.
 - Dry-run records are intentionally persisted for auditability but do not create assertions or mutate source systems.
+- Context revision triggers invalidate cached projections but do not themselves rebuild context packets; clients fetch revised packets on demand.
 - The installer tracks the default branch unless the user pins a reviewed release tag.
 - This remains alpha software despite the completed first-party Hermes integration.
