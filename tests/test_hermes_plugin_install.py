@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from cli import install_hermes_cmd
+from src.cli import install_hermes_cmd
 
 
 def test_install_hermes_copies_provider_without_importing_hermes(tmp_path):
