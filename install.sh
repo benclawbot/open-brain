@@ -1,0 +1,40 @@
+#!/usr/bin/env sh
+set -eu
+
+REPO_URL="${OPENBRAIN_REPO_URL:-https://github.com/benclawbot/open-brain.git}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+
+command -v "$PYTHON_BIN" >/dev/null 2>&1 || {
+  echo "Python 3.11+ is required." >&2
+  exit 1
+}
+
+"$PYTHON_BIN" - <<'PY'
+import sys
+if sys.version_info < (3, 11):
+    raise SystemExit("Python 3.11+ is required.")
+PY
+
+if ! command -v pipx >/dev/null 2>&1; then
+  "$PYTHON_BIN" -m pip install --user --upgrade pipx
+  "$PYTHON_BIN" -m pipx ensurepath >/dev/null 2>&1 || true
+  PIPX_BIN="$HOME/.local/bin/pipx"
+else
+  PIPX_BIN="$(command -v pipx)"
+fi
+
+if "$PIPX_BIN" list --short 2>/dev/null | grep -q '^openbrain '; then
+  "$PIPX_BIN" upgrade openbrain
+else
+  "$PIPX_BIN" install "git+$REPO_URL"
+fi
+
+cat <<'EOF'
+Open Brain installed.
+
+Next:
+  openbrain --version
+  openbrain update
+
+Restart your shell if the openbrain command is not yet on PATH.
+EOF
