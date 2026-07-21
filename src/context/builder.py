@@ -6,9 +6,11 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 try:
+    from .cache import cache_key, load_cached_packet, store_cached_packet
     from .models import ContextItem, ContextKind, ContextPacket, ContextRequest, TrustLabel
     from ..db.context_queries import fetch_structured_context, get_scope_revisions
 except ImportError:  # Support legacy execution with src/ directly on sys.path.
+    from context.cache import cache_key, load_cached_packet, store_cached_packet
     from context.models import ContextItem, ContextKind, ContextPacket, ContextRequest, TrustLabel
     from db.context_queries import fetch_structured_context, get_scope_revisions
 
@@ -96,6 +98,12 @@ def _select_diverse_candidates(
 
 
 def build_context_packet(request: ContextRequest) -> ContextPacket:
+    revisions = get_scope_revisions(request.user_identity_id, request.project_id, request.task_id)
+    key = cache_key(request, revisions)
+    cached = load_cached_packet(key)
+    if cached is not None:
+        return cached
+
     raw = fetch_structured_context(
         request.project_id,
         request.task_id,
@@ -139,11 +147,12 @@ def build_context_packet(request: ContextRequest) -> ContextPacket:
         request.max_items,
         request.token_budget,
     )
-    revisions = get_scope_revisions(request.user_identity_id, request.project_id, request.task_id)
-    return ContextPacket(
+    packet = ContextPacket(
         packet_id=uuid4(),
         scope_revisions=revisions,
         items=selected,
         estimated_tokens=used_tokens,
         truncated=truncated,
     )
+    store_cached_packet(key, request, revisions, packet)
+    return packet
