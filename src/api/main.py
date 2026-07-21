@@ -1,6 +1,6 @@
 """
 Open Brain REST API.
-FastAPI server for memory operations.
+FastAPI server for memory and continuity operations.
 """
 import os
 from datetime import datetime
@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from api.continuity import router as continuity_router
 from db.connection import init_db
 from db.queries import (
     search_memories,
@@ -34,23 +35,20 @@ from analytics.weekly_report import generate_weekly_report
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager."""
-    # Startup
     try:
         init_db()
     except Exception as e:
         print(f"Warning: Could not initialize database: {e}")
     yield
-    # Shutdown
 
 
 app = FastAPI(
     title="Open Brain API",
-    description="REST API for memory management",
-    version="1.0.0",
+    description="REST API for memory management and durable agent continuity",
+    version="1.1.0",
     lifespan=lifespan
 )
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8501", "http://localhost:8000"],
@@ -59,8 +57,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(continuity_router)
 
-# Models
+
 class MemoryCreate(BaseModel):
     content: str
     source: str = "api"
@@ -86,13 +85,12 @@ class SearchRequest(BaseModel):
     tags: Optional[List[str]] = None
 
 
-# Routes
 @app.get("/")
 async def root():
     """Root endpoint."""
     return {
         "name": "Open Brain API",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "docs": "/docs"
     }
 
@@ -122,23 +120,19 @@ async def create_memory(memory: MemoryCreate):
     user_tags = memory.tags
     importance = memory.importance
     metadata = memory.metadata
-    
-    # Extract entities
+
     entities = extract_entities(content)
-    
-    # Auto-tag
+
     tagger = get_tagger()
     tag_sources = tagger.tag(content, entities, source, user_tags)
     tags = list(tag_sources.keys())
-    
-    # Generate embedding
+
     embedding = None
     try:
         embedding = create_embedding(content)
     except Exception as e:
         print(f"Warning: Could not create embedding: {e}")
-    
-    # Store in database
+
     memory_id = insert_memory(
         source=source,
         content=content,
@@ -149,7 +143,7 @@ async def create_memory(memory: MemoryCreate):
         importance=importance,
         metadata=metadata
     )
-    
+
     return {
         "id": str(memory_id),
         "status": "stored",
@@ -169,7 +163,7 @@ async def get_memory(memory_id: str):
 
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
-    
+
     return memory
 
 
@@ -180,15 +174,14 @@ async def search_memories_endpoint(search: SearchRequest):
     limit = search.limit
     sources = search.sources
     tags = search.tags
-    
-    # Generate embedding for semantic search
+
     embedding = None
     if query:
         try:
             embedding = create_embedding(query)
         except Exception as e:
             print(f"Warning: Could not create embedding: {e}")
-    
+
     results = search_memories(
         query=query,
         embedding=embedding,
@@ -197,7 +190,6 @@ async def search_memories_endpoint(search: SearchRequest):
         tags=tags
     )
 
-    # Ensure created_at is serialized as string
     for r in results:
         if hasattr(r.get("created_at", ""), "isoformat"):
             r["created_at"] = r["created_at"].isoformat()
@@ -232,5 +224,3 @@ async def get_weekly_report(days: int = Query(7, le=30)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
