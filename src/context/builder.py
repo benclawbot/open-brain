@@ -9,8 +9,23 @@ from context.models import ContextItem, ContextKind, ContextPacket, ContextReque
 from db.context_queries import fetch_structured_context, get_scope_revisions
 
 
+_DIVERSITY_ORDER = (
+    ContextKind.WARNING,
+    ContextKind.NEXT_ACTION,
+    ContextKind.DECISION,
+    ContextKind.TASK,
+    ContextKind.ASSERTION,
+    ContextKind.PROJECT,
+    ContextKind.OUTCOME,
+)
+
+
 def _estimate_tokens(text: str) -> int:
     return max(1, (len(text) + 3) // 4)
+
+
+def _item_cost(item: ContextItem) -> int:
+    return _estimate_tokens(item.text) + 8
 
 
 def _trust(authority: str | None, status: str | None = None, stale: bool = False) -> TrustLabel:
@@ -33,6 +48,47 @@ def _is_stale(value: datetime | None, days: int = 30) -> bool:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
     return (now - value).days >= days
+
+
+def _candidate_rank(item: ContextItem) -> tuple[float, bool]:
+    return item.importance, not item.stale
+
+
+def _select_diverse_candidates(
+    candidates: list[ContextItem],
+    max_items: int,
+    token_budget: int,
+) -> tuple[list[ContextItem], int, bool]:
+    """Reserve room for distinct context kinds before filling by global rank."""
+    ranked = sorted(candidates, key=_candidate_rank, reverse=True)
+    selected: list[ContextItem] = []
+    selected_ids: set[str] = set()
+    used_tokens = 0
+
+    def add(item: ContextItem) -> bool:
+        nonlocal used_tokens
+        key = str(item.id)
+        cost = _item_cost(item)
+        if key in selected_ids or len(selected) >= max_items or used_tokens + cost > token_budget:
+            return False
+        selected.append(item)
+        selected_ids.add(key)
+        used_tokens += cost
+        return True
+
+    by_kind: dict[ContextKind, list[ContextItem]] = {}
+    for item in ranked:
+        by_kind.setdefault(item.kind, []).append(item)
+
+    for kind in _DIVERSITY_ORDER:
+        for item in by_kind.get(kind, []):
+            if add(item):
+                break
+
+    for item in ranked:
+        add(item)
+
+    return selected, used_tokens, len(selected) < len(candidates)
 
 
 def build_context_packet(request: ContextRequest) -> ContextPacket:
@@ -74,18 +130,11 @@ def build_context_packet(request: ContextRequest) -> ContextPacket:
         prefix = "Succeeded" if outcome.get("success") else "Failed" if outcome.get("success") is False else "Outcome"
         candidates.append(ContextItem(id=outcome["id"], kind=ContextKind.OUTCOME, text=f"{prefix}: {result}", trust=TrustLabel.TOOL_OBSERVED, importance=0.7, observed_at=outcome.get("occurred_at")))
 
-    candidates.sort(key=lambda item: (item.importance, not item.stale), reverse=True)
-    selected: list[ContextItem] = []
-    used_tokens = 0
-    truncated = False
-    for item in candidates:
-        cost = _estimate_tokens(item.text) + 8
-        if len(selected) >= request.max_items or used_tokens + cost > request.token_budget:
-            truncated = True
-            continue
-        selected.append(item)
-        used_tokens += cost
-
+    selected, used_tokens, truncated = _select_diverse_candidates(
+        candidates,
+        request.max_items,
+        request.token_budget,
+    )
     revisions = get_scope_revisions(request.user_identity_id, request.project_id, request.task_id)
     return ContextPacket(
         packet_id=uuid4(),
