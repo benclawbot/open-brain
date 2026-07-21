@@ -1,5 +1,5 @@
-from context.builder import _item_cost, _select_diverse_candidates
-from context.models import ContextItem, ContextKind, TrustLabel
+from src.context.builder import _item_cost, _select_diverse_candidates
+from src.context.models import ContextItem, ContextKind, TrustLabel
 
 
 def _item(identifier: str, kind: ContextKind, importance: float, text: str = "brief context") -> ContextItem:
