@@ -39,7 +39,17 @@ jobs:
       - name: Apply migrations
         run: python scripts/migrate.py
       - name: Test
-        run: pytest -q
+        shell: bash
+        run: |
+          set -o pipefail
+          pytest -q 2>&1 | tee pytest.log
+      - name: Upload pytest diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-log
+          path: pytest.log
+          if-no-files-found: ignore
       - name: Build package
         run: python -m build
       - name: Smoke-test wheel and Hermes provider
