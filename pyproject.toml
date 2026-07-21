@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openbrain"
-version = "0.1.0"
+version = "0.2.0"
 description = "Shared personal memory, agent continuity, and actionable context"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -57,3 +57,4 @@ where = ["src"]
 [tool.setuptools.package-data]
 config = ["*.yaml", "*.yml"]
 db = ["migrations/*.sql"]
+openbrain_hermes_plugin = ["plugin.yaml", "README.md"]
