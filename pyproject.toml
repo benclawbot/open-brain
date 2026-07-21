@@ -48,11 +48,14 @@ dev = [
 ]
 
 [project.scripts]
-openbrain = "src.cli:main"
+openbrain = "cli:main"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["src*", "config*", "ui*", "scripts*"]
+where = ["src"]
+
+[tool.setuptools]
+py-modules = ["cli", "embedder"]
 
 [tool.setuptools.package-data]
 config = ["*.yaml", "*.yml"]
+db = ["migrations/*.sql"]
