@@ -1,12 +1,12 @@
 # Hermes Integration Progress
 
-Branch: `agent/context-revision-triggers`
+Branch: `agent/context-feedback-scoring`
 
 This file is the durable implementation ledger for the Open Brain × Hermes work. Update it whenever a meaningful slice lands.
 
 ## Overall status
 
-Current phase: **Automatic context invalidation**
+Current phase: **Feedback-driven retrieval scoring**
 
 ### Completed
 
@@ -45,13 +45,14 @@ Current phase: **Automatic context invalidation**
 - [x] Add guarded staged-import rollback with audit-preserving tombstones.
 - [x] Add automatic context-revision invalidation for projects, tasks, decisions, outcomes, and scoped assertions.
 - [x] Propagate task changes to project and owner-user context revisions atomically.
+- [x] Aggregate context feedback into assertion access, usefulness, and harmfulness counters.
+- [x] Make feedback application idempotent per packet/item with a durable audit ledger.
 
 ### Deferred maturity work
 
 - [ ] Add provider-specific normalization for additional external memory systems.
 - [ ] Add direct authenticated provider API clients; the current slice consumes exported/API-supplied records.
-- [ ] Expand database concurrency tests for event, identity, session, import, and context races.
-- [ ] Aggregate retrieval feedback into assertion usefulness and harmfulness counters.
+- [ ] Expand database concurrency tests for event, identity, session, import, context, and feedback races.
 - [ ] Add packet diversity policies beyond the current importance and token budgets.
 - [ ] Add lifecycle automation for consolidation, demotion, archival, and tombstones.
 - [ ] Add evidence-backed self-improvement proposals and evaluation outcomes.
@@ -123,5 +124,7 @@ The current feature branch must not merge until the latest `Verify` run passes.
 - Provider adapters currently normalize caller-supplied exports/API records and do not hold provider credentials.
 - Dry-run records are intentionally persisted for auditability but do not create assertions or mutate source systems.
 - Context revision triggers invalidate cached projections but do not themselves rebuild context packets; clients fetch revised packets on demand.
+- Feedback scoring updates counters only for context item IDs that resolve to canonical assertions; other item kinds remain audit-only.
+- The first accepted feedback disposition for a packet/item is immutable to prevent double-counting; corrections require a future explicit reversal workflow.
 - The installer tracks the default branch unless the user pins a reviewed release tag.
 - This remains alpha software despite the completed first-party Hermes integration.
