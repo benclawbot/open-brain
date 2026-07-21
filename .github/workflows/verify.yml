@@ -1,0 +1,62 @@
+name: Verify
+
+on:
+  push:
+    branches: [master, "agent/**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: openbrain
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d openbrain"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: openbrain
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: pip install -e '.[dev]'
+      - name: Apply migrations
+        run: python scripts/migrate.py
+      - name: Test
+        shell: bash
+        run: |
+          set -o pipefail
+          pytest -q 2>&1 | tee pytest.log
+      - name: Upload pytest diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-log
+          path: pytest.log
+          if-no-files-found: ignore
+      - name: Build package
+        run: python -m build
+      - name: Smoke-test wheel and Hermes provider
+        run: |
+          python -m venv /tmp/openbrain-smoke
+          /tmp/openbrain-smoke/bin/pip install dist/*.whl
+          /tmp/openbrain-smoke/bin/openbrain --version
+          /tmp/openbrain-smoke/bin/openbrain install-hermes --hermes-home /tmp/hermes-smoke
+          test -f /tmp/hermes-smoke/plugins/openbrain/plugin.yaml
+          test -f /tmp/hermes-smoke/plugins/openbrain/__init__.py

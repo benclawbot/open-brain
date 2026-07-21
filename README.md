@@ -1,435 +1,372 @@
-# 🧠 Open Brain
+# Open Brain
 
-> Personal semantic memory system with MCP interface. Store, search, and analyze everything that matters to you.
+> A model-independent personal memory and agent-continuity service. Open Brain preserves evidence, projects, tasks, decisions, outcomes, and long-term learning so different agents and interfaces can continue the same work.
 
-[![GitHub Stars](https://img.shields.io/github/stars/benclawbot/open-brain)](https://github.com/benclawbot/open-brain/stargazers)
-[![Docker](https://img.shields.io/docker/pulls/benclawbot/open-brain)](https://hub.docker.com/r/benclawbot/open-brain)
-[![License](https://img.shields.io/github/license/benclawbot/open-brain)](https://github.com/benclawbot/open-brain/blob/master/LICENSE)
+[![Verify](https://github.com/benclawbot/open-brain/actions/workflows/verify.yml/badge.svg)](https://github.com/benclawbot/open-brain/actions/workflows/verify.yml)
+[![License](https://img.shields.io/github/license/benclawbot/open-brain)](LICENSE)
 
-## What is Open Brain?
+## What Open Brain does
 
-Open Brain is a **personal knowledge management system** that acts as your second brain. It:
+Open Brain is the durable knowledge layer behind AI agents. Agents remain responsible for reasoning, tools, browser or computer use, and execution. Open Brain is responsible for continuity and accumulated understanding.
 
-- 📥 **Ingests** data from anywhere (Telegram, WhatsApp, Claude Code, Gmail, files)
-- 🧠 **Embeds** everything semantically (OpenRouter, OpenAI, Ollama, or any custom API)
-- 🔍 **Searches** instantly using vector similarity
-- 📊 **Analyzes** trends, clusters, and connections
-- 🔔 **Notifies** you of important changes
-- 🌐 **Serves** via MCP, REST API, CLI, or Dashboard
+It provides:
 
-Think of it as **Obsidian meets ChatGPT memory** — but accessible from any tool.
+- semantic memory storage and hybrid search with PostgreSQL and pgvector;
+- automatic tagging, entity extraction, trends, reports, REST, MCP, CLI, and dashboard interfaces;
+- canonical user, agent, workspace, project, task, and session identities;
+- cross-interface identity links for CLI, Telegram, Slack, Discord, and other gateways;
+- append-only, provenance-aware events with idempotent ingestion;
+- session lineage for new, reset, resume, branch, compression, and rewind transitions;
+- structured assertions with supporting, contradicting, qualifying, and superseding evidence;
+- first-class decisions, outcomes, import runs, and context revisions;
+- safe bootstrap import of Hermes `USER.md`, `MEMORY.md`, explicitly allowlisted context files, session summaries or transcripts, skills, and cron jobs;
+- resumable imports with dry-run mode, source hashes, checkpoints, duplicate suppression, and an audit ledger;
+- compact actionable context packets containing current project state, tasks, decisions, assertions, outcomes, blockers, and next actions;
+- trust and freshness labels, token budgets, item budgets, and retrieval feedback;
+- a native upstream-compatible Hermes memory provider;
+- local write spooling and cached recall when Open Brain is temporarily unavailable;
+- checksum-protected additive database migrations;
+- a one-line installer and `openbrain update` command.
 
----
+Imported records are not silently promoted into truth. They remain provenance-rich candidates until reconciliation confirms whether they are durable facts, instructions, procedures, historical episodes, obsolete information, or provider inference.
 
-## ✨ Features
+## Architecture
 
-### Core
-- **Semantic Search** — Find memories by meaning, not just keywords
-- **Auto-Tagging** — Automatic topic and entity extraction
-- **Entity Recognition** — Extracts people, places, organizations, dates
-- **Trend Analysis** — See what topics are emerging or declining
+```text
+Hermes / Claude Code / Codex / Medusa / other agents
+                         │
+                 REST, MCP, or provider
+                         │
+                         ▼
+┌───────────────────────────────────────────────────────────┐
+│                       Open Brain                          │
+│                                                           │
+│  Evidence       Knowledge model       Retrieval packets   │
+│  ─────────      ───────────────       ─────────────────   │
+│  events         identities            active context      │
+│  sessions       projects/tasks        trust labels        │
+│  imports        assertions            freshness           │
+│  artifacts      decisions/outcomes    token budgets       │
+└──────────────────────────┬────────────────────────────────┘
+                           │
+                           ▼
+                  PostgreSQL + pgvector
+```
 
-### Integrations
-- **MCP Server** — Use from Claude, Codex, or any MCP client
-- **REST API** — HTTP access for any application
-- **CLI** — Command-line interface for quick operations
-- **Source Connectors** — Import from Telegram, WhatsApp, Gmail, Claude Code
+Open Brain separates:
 
-### UI
-- **Streamlit Dashboard** — Visualize memories, stats, and trends
-- **Weekly Reports** — Automated markdown reports
+1. **Canonical evidence** — append-only events, imported records, sessions, tool results, and artifacts.
+2. **Knowledge model** — current assertions, projects, tasks, decisions, procedures, and outcomes.
+3. **Retrieval projections** — embeddings, indexes, revisions, caches, and compact context packets that can be rebuilt safely.
 
----
+The Hermes design and implementation ledger are stored in:
 
-## 🚀 Quick Start
+- [`docs/HERMES_INTEGRATION_ARCHITECTURE.md`](docs/HERMES_INTEGRATION_ARCHITECTURE.md)
+- [`docs/HERMES_INTEGRATION_PROGRESS.md`](docs/HERMES_INTEGRATION_PROGRESS.md)
 
-### Prerequisites
+## Installation
 
-- [Docker](https://docker.com) + Docker Compose
-- At least 2GB RAM
-- (Optional) OpenRouter API key for embeddings
+### One-line installation
 
-### 1. Clone & Configure
+Linux, macOS, WSL, or a coding-agent shell with Python 3.11+:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
+```
+
+The installer uses `pipx`, keeping Open Brain isolated from system Python packages.
+
+Verify:
+
+```bash
+openbrain --version
+openbrain --help
+```
+
+### Install from Hermes
+
+Install Open Brain, then install its native Hermes provider:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
+openbrain install-hermes
+export OPENBRAIN_URL=http://127.0.0.1:8000
+hermes memory setup
+```
+
+Select `openbrain` as the active memory provider when prompted.
+
+Optional scope variables:
+
+```bash
+export OPENBRAIN_PROJECT_ID=<project-uuid>
+export OPENBRAIN_TASK_ID=<task-uuid>
+export OPENBRAIN_TIMEOUT=3
+```
+
+The provider is installed into:
+
+```text
+$HERMES_HOME/plugins/openbrain
+```
+
+It implements:
+
+```text
+initialize
+system_prompt_block
+prefetch / queue_prefetch
+sync_turn
+openbrain_recall
+openbrain_remember
+on_memory_write
+on_session_switch
+on_pre_compress
+on_delegation
+on_session_end
+shutdown
+```
+
+If Open Brain is unavailable, Hermes continues operating. Writes are appended to `$HERMES_HOME/openbrain-spool.jsonl` and replayed later.
+
+### Install through another coding agent
+
+Give Claude Code, Codex, Medusa, OpenCode, or another shell-capable agent this instruction:
+
+```text
+Install Open Brain from https://github.com/benclawbot/open-brain using the repository's official install.sh script. Review the script first. After installation, run `openbrain --version`. If this is Hermes, also run `openbrain install-hermes`, set OPENBRAIN_URL, and configure the openbrain memory provider. Report failed steps without deleting existing data.
+```
+
+Or execute directly:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
+openbrain --version
+```
+
+Agents without shell access can use the REST or MCP interfaces after Open Brain is deployed elsewhere.
+
+### Development installation
 
 ```bash
 git clone https://github.com/benclawbot/open-brain.git
 cd open-brain
-
-# Copy environment file
-cp .env.example .env
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e '.[dev]'
 ```
 
-### 2. Set Environment Variables
+## Updating
 
-Edit `.env`:
+```bash
+openbrain update
+```
+
+The updater:
+
+1. upgrades the pipx-managed package;
+2. loads migrations from the installed package;
+3. verifies migration checksums;
+4. applies only migrations that have not run before;
+5. leaves existing data intact if migration execution fails.
+
+Upgrade without database changes:
+
+```bash
+openbrain update --skip-migrations
+```
+
+Refresh an existing Hermes provider copy after upgrading Open Brain:
+
+```bash
+openbrain install-hermes --force
+```
+
+Already-applied migrations must never be edited. Add a new migration instead.
+
+## Database and configuration
+
+Open Brain requires PostgreSQL. pgvector is recommended for semantic retrieval.
 
 ```env
-# Database
-DB_PASSWORD=your_secure_password
-
-# Embeddings (OpenRouter = FREE)
-OPENROUTER_API_KEY=your_openrouter_key
-
-# Optional: Telegram notifications
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=openbrain
+DB_USER=postgres
+DB_PASSWORD=change-me
+DB_TIMEZONE=auto
 ```
 
-> **No API key?** OpenRouter has a free tier. Just sign up at [openrouter.ai](https://openrouter.ai).
-
-### 3. Start Everything
+Apply migrations:
 
 ```bash
+python scripts/migrate.py
+```
+
+Start the complete local stack:
+
+```bash
+cp .env.example .env
 docker compose up -d
+python scripts/migrate.py
 ```
 
-### 4. Access Services
+Default services:
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| **Dashboard** | http://localhost:8501 | Streamlit UI |
-| **MCP Server** | http://localhost:8080 | MCP protocol |
-| **REST API** | http://localhost:8000 | HTTP API |
-| **API Docs** | http://localhost:8000/docs | Swagger docs |
+| Service | Address |
+|---|---|
+| REST API | `http://localhost:8000` |
+| API documentation | `http://localhost:8000/docs` |
+| MCP server | `http://localhost:8080` |
+| Dashboard | `http://localhost:8501` |
+| PostgreSQL | `localhost:5432` |
 
----
-
-## 🔧 Configuration
-
-All settings in `config/settings.yaml`:
-
-```yaml
-database:
-  host: postgres
-  port: 5432
-  name: openbrain
-  user: postgres
-  password: ${DB_PASSWORD}
-
-embedder:
-  # Providers: openrouter, openai, ollama, custom
-  provider: openrouter
-  model: text-embedding-3-small
-  dimensions: 768
-
-mcp:
-  host: 0.0.0.0
-  port: 8080
-
-api:
-  host: 0.0.0.0
-  port: 8000
-
-dashboard:
-  port: 8501
-```
-
-### Embedder Providers
-
-| Provider | Env Variable | Notes |
-|----------|-------------|-------|
-| **OpenRouter** (default) | `OPENROUTER_API_KEY` | Free tier available |
-| OpenAI | `OPENAI_API_KEY` | Paid |
-| Ollama | `OLLAMA_BASE_URL` | Local, free |
-| Custom | `CUSTOM_API_URL` + `CUSTOM_API_KEY` | Any OpenAI-compatible |
-
----
-
-## 📡 Usage
-
-### CLI
+## CLI
 
 ```bash
-# Install
-pip install -e .
-
-# Search memories
-openbrain search "what did I learn about AI"
-
-# Store a memory
-openbrain store "Meeting with Oliver about trading bot" --source telegram --tags ai,trading
-
-# Show stats
+openbrain search "what did I decide about Hermes?"
+openbrain store "Use upstream NousResearch/hermes-agent" --source cli --tag hermes
 openbrain stats
-
-# Generate weekly report
-openbrain report
-
-# Start API server
-openbrain serve
+openbrain import file ./notes.md
+openbrain report --days 7
+openbrain serve --host 127.0.0.1 --port 8000
+openbrain install-hermes
+openbrain update
 ```
 
-### MCP Tools
+## REST API
 
-Connect any MCP client to `http://localhost:8080`:
+Existing semantic-memory endpoints remain available:
 
-```python
-# Example: Using memory_search
-{
-  "name": "memory_search",
-  "arguments": {
-    "query": "trading strategies",
-    "limit": 5,
-    "sources": ["telegram", "claude"]
-  }
-}
+```text
+POST /memories
+POST /memories/search
+GET  /memories/{memory_id}
+GET  /stats
+GET  /trends
+GET  /report/weekly
 ```
 
-### REST API
+Continuity endpoints:
+
+```text
+POST /v1/events
+POST /v1/identities/resolve
+POST /v1/sessions/open
+POST /v1/sessions/{session_id}/close
+POST /v1/imports/hermes/markdown
+POST /v1/context
+POST /v1/context/feedback
+```
+
+### Ingest an idempotent event
 
 ```bash
-# Search
-curl -X POST http://localhost:8000/memories/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "AI agents", "limit": 5}'
-
-# Store
-curl -X POST http://localhost:8000/memories \
-  -H "Content-Type: application/json" \
-  -d '{"content": "New idea", "source": "manual"}'
-
-# Stats
-curl http://localhost:8000/stats
+curl -X POST http://localhost:8000/v1/events \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "event_type": "conversation.user_message",
+    "idempotency_key": "hermes:session-42:message-18",
+    "source_system": "hermes",
+    "authority": "user_confirmed",
+    "payload": {"content": "Use upstream Hermes, not my old fork."}
+  }'
 ```
 
----
-
-## 🏗 Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Clients                               │
-│   Claude Code | Codex | OpenClaw | Custom Apps | CLI       │
-└─────────────────────────┬───────────────────────────────────┘
-                          │ MCP / HTTP / CLI
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Open Brain                              │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │   MCP API   │  │  REST API   │  │     CLI Tools    │   │
-│  └─────────────┘  └──────────────┘  └──────────────────┘   │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              Application Layer                          │ │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │ │
-│  │  │Extractors│ │  Tagger  │ │Analytics │ │ Notifier │  │ │
-│  │  │ (Entities│ │ (Auto-tag│ │ (Trends) │ │(Telegram)│  │ │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘  │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              Embedder (Multi-Provider)                  │ │
-│  │   OpenRouter | OpenAI | Ollama | Custom                 │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────┐
-│                   PostgreSQL + pgvector                      │
-│   memory table with vector embeddings, GIN indexes          │
-│   for tags/entities, IVFFlat for similarity search          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Components
-
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Database | PostgreSQL + pgvector | Storage + vector search |
-| MCP Server | FastMCP | Tool interface for AI agents |
-| REST API | FastAPI | HTTP access |
-| CLI | Click | Terminal commands |
-| Dashboard | Streamlit | Visual UI |
-| Embedder | requests | Multi-provider embeddings |
-| Extractors | NLTK/spaCy | Entity extraction |
-
----
-
-## 📁 Project Structure
-
-```
-open-brain/
-├── config/
-│   └── settings.yaml          # Configuration
-├── src/
-│   ├── main.py                # MCP server entry
-│   ├── db/                    # Database layer
-│   │   ├── schema.sql
-│   │   ├── connection.py
-│   │   └── queries.py
-│   ├── embedder/              # Multi-provider embeddings
-│   ├── extractors/            # NER + tagging
-│   ├── analytics/             # Trends + reports
-│   ├── connectors/            # Source importers
-│   ├── cli/                   # CLI commands
-│   ├── api/                   # REST API
-│   ├── notifications/         # Telegram + email
-│   └── ingestion/             # Bulk import
-├── ui/
-│   └── dashboard.py           # Streamlit dashboard
-├── scripts/
-│   ├── setup_db.py            # Database setup
-│   ├── backup.sh              # Automated backups
-│   └── healthcheck.sh         # Health monitoring
-├── tests/
-│   └── test_core.py
-├── docker-compose.yml         # Full stack
-├── Dockerfile                 # App container
-├── pyproject.toml             # CLI package
-├── requirements.txt           # Python deps
-└── README.md
-```
-
----
-
-## 🔌 Source Connectors
-
-### Telegram
-
-```python
-from src.connectors.telegram import TelegramImporter
-
-importer = TelegramImporter(
-    export_file="telegram_export.json"
-)
-importer.import_all(db_conn)
-```
-
-### WhatsApp
-
-```python
-from src.connectors.whatsapp import WhatsAppImporter
-
-importer = WhatsAppImporter(
-    export_file="whatsapp_chat.txt"
-)
-importer.import_all(db_conn)
-```
-
-### Claude Code
-
-```python
-from src.connectors.claude_code import ClaudeCodeImporter
-
-importer = ClaudeCodeImporter(
-    sessions_path="~/.claude/sessions"
-)
-importer.import_all(db_conn)
-```
-
-### Gmail
-
-```python
-from src.connectors.gmail import GmailImporter
-
-importer = GmailImporter(
-    takeout_path="./mail"
-)
-importer.import_all(db_conn)
-```
-
----
-
-## 📊 Analytics
-
-### Trend Detection
-
-Automatically detects:
-- **Emerging topics** — Tags increasing >50% vs baseline
-- **Declining topics** — Tags dropping >30%
-- **New entities** — People/places appearing for first time
-- **Co-occurrence** — Topics that appear together
-
-### Weekly Reports
-
-Generated every Sunday via cron:
-
-```markdown
-# Weekly Memory Report
-
-### Activity
-- New memories: 47
-- By source: telegram: 23, claude: 15, manual: 9
-
-### What's Hot
-- ai: +200% (15 mentions)
-- trading: +50% (8 mentions)
-
-### Insights
-- You're researching AI agents heavily this week
-- Oliver appeared 5 times — significant collaboration
-```
-
----
-
-## 🔔 Notifications
-
-### Telegram Alerts
-
-- New emerging trends
-- Weekly reports
-- Memory stats summaries
-
-### Email
-
-- Daily digests
-- Weekly reports
-- Anomaly alerts
-
----
-
-## 🐳 Docker Services
-
-| Service | Image | Ports |
-|---------|-------|-------|
-| postgres | pgvector/pgvector:0.5.1 | 5432 |
-| api | benclawbot/open-brain | 8000 |
-| dashboard | benclawbot/open-brain | 8501 |
-| mcp | benclawbot/open-brain | 8080 |
-
----
-
-## 🤖 Phone Installation (ARM)
-
-For running on an old Android phone converted to Linux:
+### Request actionable context
 
 ```bash
-# Use ARM-compatible images
-docker-compose -f docker-compose.arm.yml up -d
-
-# Or build locally on phone
-docker build --platform=linux/arm64 .
+curl -X POST http://localhost:8000/v1/context \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "project_id": "00000000-0000-0000-0000-000000000000",
+    "max_items": 20,
+    "token_budget": 1600
+  }'
 ```
 
-Resources: ~500MB RAM, ~1GB storage
+Context packets contain selected current state rather than raw transcript fragments. Items carry trust labels such as `user_confirmed`, `tool_observed`, `curated_memory`, `inferred`, `stale`, or `contradicted`.
 
----
+## Hermes bootstrap import
 
-## 🧪 Testing
+The import layer recognizes:
+
+- `hermes.user_memory` — `USER.md`;
+- `hermes.agent_memory` — `MEMORY.md`;
+- `hermes.context` — explicitly allowlisted context files;
+- `hermes.session` — summaries preferred over transcripts;
+- `hermes.skill` — procedural candidates requiring evaluation;
+- `hermes.cron` — structured automation candidates, still executed by Hermes;
+- external memory providers — normalized through provider adapters.
+
+Imports support dry-run and safe resume. A changed source fingerprint requires a new import run.
+
+## Memory lifecycle
+
+```text
+candidate → active → confirmed
+                     ├→ superseded
+                     ├→ contradicted
+                     ├→ dormant
+                     └→ archived → tombstoned → deleted
+```
+
+Open Brain prunes retrieval before storage. Old evidence can leave hot retrieval while remaining available for history, provenance, audit, and reconciliation. User-authored information is not automatically physically deleted.
+
+## Security and authority
+
+Typical authority ordering:
+
+1. direct user statement;
+2. user-curated memory;
+3. tool observation;
+4. provider inference;
+5. Open Brain inference;
+6. assistant claim.
+
+Sensitive records can carry sensitivity and retention classifications. Provider inference remains distinguishable from user-confirmed truth.
+
+Review `install.sh` before execution in high-security environments. For reproducible deployment, pin installation to a reviewed release tag rather than `master`.
+
+## Development and validation
 
 ```bash
-# Run tests
-pytest tests/
-
-# Test MCP connection
-python -c "from src.main import mcp; print(mcp)"
+pip install -e '.[dev]'
+python scripts/migrate.py
+pytest -q
+python -m build
 ```
 
----
+GitHub Actions validates:
 
-## 📝 License
+- package installation;
+- PostgreSQL and pgvector migrations;
+- tests;
+- wheel creation;
+- installed CLI execution;
+- native Hermes provider copying.
 
-MIT License — do whatever you want with it.
+## Project structure
 
----
+```text
+src/
+├── api/                       REST endpoints
+├── cli/                       command-line interface
+├── continuity/                event, identity, and session contracts
+├── context/                   actionable context and packet builder
+├── db/                        persistence, migrations, and queries
+├── importers/                 Hermes and provider import adapters
+├── openbrain_hermes_plugin/   standalone Hermes memory provider
+├── analytics/                 trends and reports
+├── connectors/                source connectors
+├── extractors/                entities and tagging
+└── notifications/             notification integrations
+```
 
-## 🙏 Acknowledgments
+## Status
 
-- [pgvector](https://github.com/pgvector/pgvector) — Vector similarity for PostgreSQL
-- [FastMCP](https://github.com/jlowin/fastmcp) — MCP framework
-- [OpenRouter](https://openrouter.ai) — Free embedding API
+Open Brain 0.2 is alpha software. The continuity foundation, Hermes bootstrap imports, actionable context APIs, native Hermes provider, installer, updater, and packaging path are implemented. Remaining maturity work includes broader database concurrency coverage, provider-specific normalization, staged-import rollback metadata, lifecycle automation, and self-improvement proposals.
 
----
+## License
 
-## 🔗 Links
-
-- [GitHub](https://github.com/benclawbot/open-brain)
-- [Report Issues](https://github.com/benclawbot/open-brain/issues)
-- [Discussions](https://github.com/benclawbot/open-brain/discussions)
+MIT.

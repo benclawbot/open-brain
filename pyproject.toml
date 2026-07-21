@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openbrain"
-version = "0.1.0"
-description = "Standalone personal memory management system with semantic search"
+version = "0.2.0"
+description = "Shared personal memory, agent continuity, and actionable context"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "Tom", email = "tom@example.com"}
 ]
-keywords = ["memory", "embeddings", "semantic-search", "ai", "postgres", "pgvector"]
+keywords = ["memory", "agents", "semantic-search", "mcp", "postgres", "pgvector"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -37,6 +37,8 @@ dependencies = [
     "httpx>=0.26.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
+    "nltk>=3.8.1",
+    "mcp>=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +47,7 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "black>=24.1.0",
     "ruff>=0.2.0",
+    "build>=1.2.0",
 ]
 
 [project.scripts]
@@ -52,7 +55,9 @@ openbrain = "src.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "config*", "ui*", "scripts*"]
+include = ["src*", "config*"]
 
 [tool.setuptools.package-data]
 config = ["*.yaml", "*.yml"]
+"src.db" = ["migrations/*.sql"]
+"src.openbrain_hermes_plugin" = ["plugin.yaml", "README.md"]

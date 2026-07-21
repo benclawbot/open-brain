@@ -1,0 +1,9 @@
+name: openbrain
+version: 0.2.0
+description: Shared personal memory and cross-agent continuity through Open Brain
+hooks:
+  - on_session_end
+  - on_session_switch
+  - on_pre_compress
+  - on_memory_write
+  - on_delegation
