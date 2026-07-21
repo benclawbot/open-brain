@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from continuity.scopes import IdentityKind, IdentityRef, LineageReason, SessionOpen
+from src.continuity.scopes import IdentityKind, IdentityRef, LineageReason, SessionOpen
 
 
 def test_identity_normalizes_canonical_key():
