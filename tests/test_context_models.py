@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from context.models import (
+from src.context.models import (
     ContextFeedback,
     ContextFeedbackItem,
     ContextItem,
