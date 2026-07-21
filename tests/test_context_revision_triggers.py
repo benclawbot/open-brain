@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from db.connection import get_db_cursor
+from src.db.connection import get_db_cursor
 
 
 def _revision(scope_type: str, scope_id) -> int:
