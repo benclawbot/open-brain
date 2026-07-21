@@ -125,7 +125,19 @@ def fetch_structured_context(project_id: UUID | None, task_id: UUID | None, incl
     return data
 
 
-def save_context_feedback(packet_id: UUID, payload: dict) -> None:
+def _assertion_id(value: object) -> str | None:
+    try:
+        return str(UUID(str(value)))
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
+def save_context_feedback(packet_id: UUID, payload: dict) -> dict[str, int]:
+    """Persist feedback and apply each packet item at most once to assertion counters."""
+    summary = {"applied": 0, "duplicates": 0, "assertions_updated": 0}
+    packet_id_value = str(packet_id)
+    outcome = payload.get("outcome")
+
     with get_db_cursor() as cursor:
         cursor.execute(
             """
@@ -139,3 +151,58 @@ def save_context_feedback(packet_id: UUID, payload: dict) -> None:
             """,
             (f"context-feedback:{packet_id}", json.dumps(payload), datetime.now(timezone.utc)),
         )
+
+        for item in payload.get("items", []):
+            context_item_id = str(item.get("context_item_id", ""))
+            disposition = str(item.get("disposition", ""))
+            assertion_id = _assertion_id(context_item_id)
+            matched_assertion_id = None
+
+            if assertion_id is not None:
+                cursor.execute("SELECT id FROM assertion WHERE id = %s::uuid", (assertion_id,))
+                row = cursor.fetchone()
+                if row:
+                    matched_assertion_id = str(row["id"])
+
+            cursor.execute(
+                """
+                INSERT INTO context_feedback_application (
+                    packet_id, context_item_id, disposition, assertion_id, note, outcome
+                ) VALUES (%s::uuid, %s, %s, %s::uuid, %s, %s)
+                ON CONFLICT (packet_id, context_item_id) DO NOTHING
+                RETURNING assertion_id
+                """,
+                (
+                    packet_id_value,
+                    context_item_id,
+                    disposition,
+                    matched_assertion_id,
+                    item.get("note"),
+                    outcome,
+                ),
+            )
+            applied = cursor.fetchone()
+            if applied is None:
+                summary["duplicates"] += 1
+                continue
+
+            summary["applied"] += 1
+            if matched_assertion_id is None:
+                continue
+
+            useful_increment = 1 if disposition == "used" else 0
+            harmful_increment = 1 if disposition == "incorrect" else 0
+            cursor.execute(
+                """
+                UPDATE assertion
+                SET access_count = access_count + 1,
+                    useful_count = useful_count + %s,
+                    harmful_count = harmful_count + %s,
+                    last_accessed_at = NOW()
+                WHERE id = %s::uuid
+                """,
+                (useful_increment, harmful_increment, matched_assertion_id),
+            )
+            summary["assertions_updated"] += cursor.rowcount
+
+    return summary
