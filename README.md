@@ -7,14 +7,14 @@
 
 ## What Open Brain does
 
-Open Brain is the durable knowledge layer behind AI agents. The agent remains responsible for reasoning, tools, browser or computer use, and execution. Open Brain is responsible for continuity and accumulated understanding.
+Open Brain is the durable knowledge layer behind AI agents. Agents remain responsible for reasoning, tools, browser or computer use, and execution. Open Brain is responsible for continuity and accumulated understanding.
 
-It currently provides:
+It provides:
 
 - semantic memory storage and hybrid search with PostgreSQL and pgvector;
 - automatic tagging, entity extraction, trends, reports, REST, MCP, CLI, and dashboard interfaces;
 - canonical user, agent, workspace, project, task, and session identities;
-- cross-interface identity links so the same person can be recognized across CLI, Telegram, Slack, Discord, or another gateway;
+- cross-interface identity links for CLI, Telegram, Slack, Discord, and other gateways;
 - append-only, provenance-aware events with idempotent ingestion;
 - session lineage for new, reset, resume, branch, compression, and rewind transitions;
 - structured assertions with supporting, contradicting, qualifying, and superseding evidence;
@@ -23,8 +23,10 @@ It currently provides:
 - resumable imports with dry-run mode, source hashes, checkpoints, duplicate suppression, and an audit ledger;
 - compact actionable context packets containing current project state, tasks, decisions, assertions, outcomes, blockers, and next actions;
 - trust and freshness labels, token budgets, item budgets, and retrieval feedback;
+- a native upstream-compatible Hermes memory provider;
+- local write spooling and cached recall when Open Brain is temporarily unavailable;
 - checksum-protected additive database migrations;
-- a one-line pipx installer and `openbrain update` command.
+- a one-line installer and `openbrain update` command.
 
 Imported records are not silently promoted into truth. They remain provenance-rich candidates until reconciliation confirms whether they are durable facts, instructions, procedures, historical episodes, obsolete information, or provider inference.
 
@@ -51,13 +53,13 @@ Hermes / Claude Code / Codex / Medusa / other agents
                   PostgreSQL + pgvector
 ```
 
-Open Brain keeps three concerns separate:
+Open Brain separates:
 
 1. **Canonical evidence** — append-only events, imported records, sessions, tool results, and artifacts.
 2. **Knowledge model** — current assertions, projects, tasks, decisions, procedures, and outcomes.
-3. **Retrieval projections** — embeddings, indexes, revisions, caches, and compact context packets that may be rebuilt safely.
+3. **Retrieval projections** — embeddings, indexes, revisions, caches, and compact context packets that can be rebuilt safely.
 
-The accepted Hermes integration design and implementation ledger live in:
+The Hermes design and implementation ledger are stored in:
 
 - [`docs/HERMES_INTEGRATION_ARCHITECTURE.md`](docs/HERMES_INTEGRATION_ARCHITECTURE.md)
 - [`docs/HERMES_INTEGRATION_PROGRESS.md`](docs/HERMES_INTEGRATION_PROGRESS.md)
@@ -72,7 +74,7 @@ Linux, macOS, WSL, or a coding-agent shell with Python 3.11+:
 curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
 ```
 
-The installer uses `pipx` so the `openbrain` command is isolated from system Python packages. Restart the shell if `~/.local/bin` was newly added to `PATH`.
+The installer uses `pipx`, keeping Open Brain isolated from system Python packages.
 
 Verify:
 
@@ -81,22 +83,68 @@ openbrain --version
 openbrain --help
 ```
 
-### Install through Hermes or another coding agent
+### Install from Hermes
 
-Give the agent this instruction:
+Install Open Brain, then install its native Hermes provider:
 
-```text
-Install Open Brain from https://github.com/benclawbot/open-brain using the repository's official install.sh script. Do not copy commands from third-party sources. After installation, run `openbrain --version`, configure PostgreSQL, apply migrations, and report any failed step without deleting existing data.
+```bash
+curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
+openbrain install-hermes
+export OPENBRAIN_URL=http://127.0.0.1:8000
+hermes memory setup
 ```
 
-Or ask it to execute:
+Select `openbrain` as the active memory provider when prompted.
+
+Optional scope variables:
+
+```bash
+export OPENBRAIN_PROJECT_ID=<project-uuid>
+export OPENBRAIN_TASK_ID=<task-uuid>
+export OPENBRAIN_TIMEOUT=3
+```
+
+The provider is installed into:
+
+```text
+$HERMES_HOME/plugins/openbrain
+```
+
+It implements:
+
+```text
+initialize
+system_prompt_block
+prefetch / queue_prefetch
+sync_turn
+openbrain_recall
+openbrain_remember
+on_memory_write
+on_session_switch
+on_pre_compress
+on_delegation
+on_session_end
+shutdown
+```
+
+If Open Brain is unavailable, Hermes continues operating. Writes are appended to `$HERMES_HOME/openbrain-spool.jsonl` and replayed later.
+
+### Install through another coding agent
+
+Give Claude Code, Codex, Medusa, OpenCode, or another shell-capable agent this instruction:
+
+```text
+Install Open Brain from https://github.com/benclawbot/open-brain using the repository's official install.sh script. Review the script first. After installation, run `openbrain --version`. If this is Hermes, also run `openbrain install-hermes`, set OPENBRAIN_URL, and configure the openbrain memory provider. Report failed steps without deleting existing data.
+```
+
+Or execute directly:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
 openbrain --version
 ```
 
-This works from Hermes, Claude Code, Codex, Medusa, OpenCode, or another coding agent that has permission to run shell commands. For restricted agents, clone the repository manually and review `install.sh` before execution.
+Agents without shell access can use the REST or MCP interfaces after Open Brain is deployed elsewhere.
 
 ### Development installation
 
@@ -116,25 +164,29 @@ openbrain update
 
 The updater:
 
-1. upgrades the pipx-managed Open Brain package;
+1. upgrades the pipx-managed package;
 2. loads migrations from the installed package;
 3. verifies migration checksums;
 4. applies only migrations that have not run before;
 5. leaves existing data intact if migration execution fails.
 
-Upgrade without touching the database:
+Upgrade without database changes:
 
 ```bash
 openbrain update --skip-migrations
 ```
 
-Database migrations are additive and recorded in `schema_migration`. An already-applied migration must never be edited; a new migration must be added instead.
+Refresh an existing Hermes provider copy after upgrading Open Brain:
+
+```bash
+openbrain install-hermes --force
+```
+
+Already-applied migrations must never be edited. Add a new migration instead.
 
 ## Database and configuration
 
-Open Brain requires PostgreSQL. pgvector is recommended for semantic search.
-
-Environment variables:
+Open Brain requires PostgreSQL. pgvector is recommended for semantic retrieval.
 
 ```env
 DB_HOST=localhost
@@ -151,13 +203,7 @@ Apply migrations:
 python scripts/migrate.py
 ```
 
-Or, from an installed package, run the update path after configuring the database:
-
-```bash
-openbrain update
-```
-
-For the complete local stack:
+Start the complete local stack:
 
 ```bash
 cp .env.example .env
@@ -184,6 +230,7 @@ openbrain stats
 openbrain import file ./notes.md
 openbrain report --days 7
 openbrain serve --host 127.0.0.1 --port 8000
+openbrain install-hermes
 openbrain update
 ```
 
@@ -238,41 +285,11 @@ curl -X POST http://localhost:8000/v1/context \
   }'
 ```
 
-A context packet contains selected current state rather than raw transcript fragments. Items carry trust labels such as `user_confirmed`, `tool_observed`, `curated_memory`, `inferred`, `stale`, or `contradicted`.
+Context packets contain selected current state rather than raw transcript fragments. Items carry trust labels such as `user_confirmed`, `tool_observed`, `curated_memory`, `inferred`, `stale`, or `contradicted`.
 
-## Hermes integration
+## Hermes bootstrap import
 
-The repository now contains the Open Brain side of the Hermes integration:
-
-- identity resolution;
-- session establishment and lineage;
-- event ingestion;
-- Hermes built-in-memory bootstrap import;
-- session, skill, context, and cron discovery;
-- actionable context packets;
-- feedback contracts.
-
-The native upstream-compatible Hermes `OpenBrainMemoryProvider` remains the next integration slice. Until it lands in upstream Hermes, Hermes can call Open Brain through REST or MCP. Open Brain remains usable by any other agent through the same interfaces.
-
-The intended provider lifecycle is:
-
-```text
-initialize
-prefetch / queue_prefetch
-sync_turn
-on_memory_write
-on_session_switch
-on_pre_compress
-on_delegation
-on_session_end
-shutdown
-```
-
-Open Brain must never prevent Hermes from responding. If the service is unavailable, the provider will fall back to its last cached context and spool writes locally for later replay.
-
-## Bootstrap import from Hermes
-
-The import layer recognizes these source classes:
+The import layer recognizes:
 
 - `hermes.user_memory` — `USER.md`;
 - `hermes.agent_memory` — `MEMORY.md`;
@@ -282,11 +299,9 @@ The import layer recognizes these source classes:
 - `hermes.cron` — structured automation candidates, still executed by Hermes;
 - external memory providers — normalized through provider adapters.
 
-Imports support dry-run and safe resume. A changed source fingerprint requires a new import run rather than silently resuming against different data.
+Imports support dry-run and safe resume. A changed source fingerprint requires a new import run.
 
 ## Memory lifecycle
-
-The target lifecycle is:
 
 ```text
 candidate → active → confirmed
@@ -296,11 +311,11 @@ candidate → active → confirmed
                      └→ archived → tombstoned → deleted
 ```
 
-Open Brain prunes retrieval before storage. Old evidence may leave hot retrieval while remaining available for history, provenance, audit, and reconciliation. User-authored information is not automatically physically deleted.
+Open Brain prunes retrieval before storage. Old evidence can leave hot retrieval while remaining available for history, provenance, audit, and reconciliation. User-authored information is not automatically physically deleted.
 
 ## Security and authority
 
-Authority is explicit. Typical ordering is:
+Typical authority ordering:
 
 1. direct user statement;
 2. user-curated memory;
@@ -309,9 +324,9 @@ Authority is explicit. Typical ordering is:
 5. Open Brain inference;
 6. assistant claim.
 
-Sensitive records can carry sensitivity and retention classifications. Imported provider inference must remain distinguishable from user-confirmed truth.
+Sensitive records can carry sensitivity and retention classifications. Provider inference remains distinguishable from user-confirmed truth.
 
-The installer should be reviewed before execution in high-security environments. For reproducible deployment, pin installation to a reviewed release tag rather than `master`.
+Review `install.sh` before execution in high-security environments. For reproducible deployment, pin installation to a reviewed release tag rather than `master`.
 
 ## Development and validation
 
@@ -324,31 +339,33 @@ python -m build
 
 GitHub Actions validates:
 
-- installation;
+- package installation;
 - PostgreSQL and pgvector migrations;
 - tests;
 - wheel creation;
-- installed CLI smoke tests.
+- installed CLI execution;
+- native Hermes provider copying.
 
 ## Project structure
 
 ```text
 src/
-├── api/             REST endpoints
-├── cli/             command-line interface
-├── continuity/      event, identity, and session contracts
-├── context/         actionable context models and packet builder
-├── db/              persistence, migrations, and queries
-├── importers/       Hermes and provider import adapters
-├── analytics/       trends and reports
-├── connectors/      existing source connectors
-├── extractors/      entities and tagging
-└── notifications/   notification integrations
+├── api/                       REST endpoints
+├── cli/                       command-line interface
+├── continuity/                event, identity, and session contracts
+├── context/                   actionable context and packet builder
+├── db/                        persistence, migrations, and queries
+├── importers/                 Hermes and provider import adapters
+├── openbrain_hermes_plugin/   standalone Hermes memory provider
+├── analytics/                 trends and reports
+├── connectors/                source connectors
+├── extractors/                entities and tagging
+└── notifications/             notification integrations
 ```
 
 ## Status
 
-Open Brain is alpha software. The continuity foundation and bootstrap/context contracts are implemented on the active integration work, while database concurrency tests, provider-specific normalization, staged-import rollback metadata, and the native Hermes provider still require completion and validation before a stable release.
+Open Brain 0.2 is alpha software. The continuity foundation, Hermes bootstrap imports, actionable context APIs, native Hermes provider, installer, updater, and packaging path are implemented. Remaining maturity work includes broader database concurrency coverage, provider-specific normalization, staged-import rollback metadata, lifecycle automation, and self-improvement proposals.
 
 ## License
 
