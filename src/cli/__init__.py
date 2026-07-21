@@ -16,13 +16,6 @@ _dotenv_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
 if os.path.exists(_dotenv_path):
     load_dotenv(_dotenv_path)
 
-from .import_data import import_cmd
-from .report import report_cmd
-from .search import search_memories_cmd
-from .serve import serve_cmd
-from .stats import stats_cmd
-from .store import store_memory_cmd
-
 
 def _version() -> str:
     try:
@@ -154,16 +147,28 @@ def main() -> int:
 
     try:
         if args.command == "search":
+            from .search import search_memories_cmd
+
             return search_memories_cmd(args)
         if args.command == "store":
+            from .store import store_memory_cmd
+
             return store_memory_cmd(args)
         if args.command == "stats":
+            from .stats import stats_cmd
+
             return stats_cmd(args)
         if args.command == "import":
+            from .import_data import import_cmd
+
             return import_cmd(args)
         if args.command == "report":
+            from .report import report_cmd
+
             return report_cmd(args)
         if args.command == "serve":
+            from .serve import serve_cmd
+
             return serve_cmd(args)
         if args.command == "update":
             return update_cmd(skip_migrations=args.skip_migrations)
