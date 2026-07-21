@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import threading
-import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -14,6 +14,11 @@ from typing import Any, Dict, List, Optional
 from agent.memory_provider import MemoryProvider
 
 logger = logging.getLogger(__name__)
+
+
+def _digest(*parts: str) -> str:
+    payload = "\0".join(parts).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()[:24]
 
 
 class _Client:
@@ -38,6 +43,7 @@ class OpenBrainMemoryProvider(MemoryProvider):
     def __init__(self) -> None:
         self._client: _Client | None = None
         self._session_id = ""
+        self._session_record_id: str | None = None
         self._platform = "cli"
         self._hermes_home = Path.home() / ".hermes"
         self._spool = self._hermes_home / "openbrain-spool.jsonl"
@@ -106,7 +112,8 @@ class OpenBrainMemoryProvider(MemoryProvider):
         }
         if parent_session_id:
             payload["parent_external_session_id"] = parent_session_id
-        self._client.request("POST", "/v1/sessions/open", payload)
+        response = self._client.request("POST", "/v1/sessions/open", payload)
+        self._session_record_id = str(response["id"])
 
     def system_prompt_block(self) -> str:
         return (
@@ -124,8 +131,9 @@ class OpenBrainMemoryProvider(MemoryProvider):
                 "/memories/search",
                 {"query": query, "limit": 8},
             ) or []
-            if memories:
-                sections.append("## Relevant memories\n" + "\n".join(f"- {item.get('content', '')}" for item in memories if item.get("content")))
+            lines = [f"- {item.get('content', '')}" for item in memories if item.get("content")]
+            if lines:
+                sections.append("## Relevant memories\n" + "\n".join(lines))
         except Exception:
             logger.debug("Open Brain semantic recall failed", exc_info=True)
 
@@ -143,8 +151,12 @@ class OpenBrainMemoryProvider(MemoryProvider):
                     },
                 ) or {}
                 items = packet.get("items") or []
-                if items:
-                    lines = [f"- [{item.get('trust', 'inferred')}] {item.get('text', '')}" for item in items if item.get("text")]
+                lines = [
+                    f"- [{item.get('trust', 'inferred')}] {item.get('text', '')}"
+                    for item in items
+                    if item.get("text")
+                ]
+                if lines:
                     sections.append("## Current work context\n" + "\n".join(lines))
             except Exception:
                 logger.debug("Open Brain actionable context recall failed", exc_info=True)
@@ -171,20 +183,23 @@ class OpenBrainMemoryProvider(MemoryProvider):
         self._prefetch_threads[key] = thread
         thread.start()
 
-    def _enqueue_event(self, event_type: str, payload: dict, *, session_id: str | None = None, authority: str = "tool_observed") -> None:
+    def _enqueue_event(self, event_type: str, payload: dict, *, authority: str = "tool_observed") -> None:
+        event_payload = dict(payload)
+        idempotency_key = event_payload.pop("idempotency_key")
         event = {
             "event_type": event_type,
-            "idempotency_key": payload.pop("idempotency_key"),
+            "idempotency_key": idempotency_key,
             "source_system": "hermes",
             "authority": authority,
             "scope": {
                 "user_identity_id": self._user_identity_id,
                 "agent_identity_id": self._agent_identity_id,
                 "workspace_identity_id": self._workspace_identity_id,
+                "session_id": self._session_record_id,
                 "project_id": self._project_id,
                 "task_id": self._task_id,
             },
-            "payload": payload,
+            "payload": event_payload,
         }
         self._dispatch_or_spool("/v1/events", event)
 
@@ -203,13 +218,20 @@ class OpenBrainMemoryProvider(MemoryProvider):
         self._write_threads.append(thread)
         thread.start()
 
-    def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "", messages: Optional[List[Dict[str, Any]]] = None) -> None:
+    def sync_turn(
+        self,
+        user_content: str,
+        assistant_content: str,
+        *,
+        session_id: str = "",
+        messages: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
         sid = session_id or self._session_id
-        base = f"hermes:{sid}:{abs(hash((user_content, assistant_content)))}"
+        key = f"hermes:{sid}:turn:{_digest(user_content, assistant_content)}"
         self._enqueue_event(
             "conversation.turn_completed",
             {
-                "idempotency_key": base,
+                "idempotency_key": key,
                 "session_id": sid,
                 "user_content": user_content,
                 "assistant_content": assistant_content,
@@ -224,7 +246,10 @@ class OpenBrainMemoryProvider(MemoryProvider):
                 "description": "Search durable Open Brain memory for relevant prior context.",
                 "parameters": {
                     "type": "object",
-                    "properties": {"query": {"type": "string"}, "limit": {"type": "integer", "default": 8}},
+                    "properties": {
+                        "query": {"type": "string"},
+                        "limit": {"type": "integer", "default": 8},
+                    },
                     "required": ["query"],
                 },
             },
@@ -248,7 +273,11 @@ class OpenBrainMemoryProvider(MemoryProvider):
             return json.dumps({"error": "Open Brain client unavailable"})
         try:
             if tool_name == "openbrain_recall":
-                result = self._client.request("POST", "/memories/search", {"query": args["query"], "limit": int(args.get("limit", 8))})
+                result = self._client.request(
+                    "POST",
+                    "/memories/search",
+                    {"query": args["query"], "limit": int(args.get("limit", 8))},
+                )
                 return json.dumps(result)
             if tool_name == "openbrain_remember":
                 result = self._client.request(
@@ -266,12 +295,21 @@ class OpenBrainMemoryProvider(MemoryProvider):
             return json.dumps({"error": str(exc)})
         return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
-    def on_session_switch(self, new_session_id: str, *, parent_session_id: str = "", reset: bool = False, rewound: bool = False, **kwargs) -> None:
-        reason = "rewind" if rewound else "reset" if reset else "branch" if parent_session_id else "resume"
+    def on_session_switch(
+        self,
+        new_session_id: str,
+        *,
+        parent_session_id: str = "",
+        reset: bool = False,
+        rewound: bool = False,
+        **kwargs,
+    ) -> None:
+        reason = "rewind" if rewound else "reset" if reset else "branch" if parent_session_id else "new"
         try:
             self._open_session(new_session_id, parent_session_id, reason)
         except Exception:
             logger.warning("Failed to record Open Brain session switch", exc_info=True)
+            self._session_record_id = None
         self._session_id = new_session_id
         self._cached_prefetch.pop(new_session_id, None)
 
@@ -286,11 +324,17 @@ class OpenBrainMemoryProvider(MemoryProvider):
         )
         return "Preserve explicit user corrections, decisions, unresolved commitments, and reusable lessons."
 
-    def on_memory_write(self, action: str, target: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def on_memory_write(
+        self,
+        action: str,
+        target: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
         self._enqueue_event(
             "memory.builtin_write",
             {
-                "idempotency_key": f"hermes:{self._session_id}:memory:{target}:{action}:{abs(hash(content))}",
+                "idempotency_key": f"hermes:{self._session_id}:memory:{target}:{action}:{_digest(content)}",
                 "action": action,
                 "target": target,
                 "content": content,
@@ -299,11 +343,20 @@ class OpenBrainMemoryProvider(MemoryProvider):
             authority="curated_memory",
         )
 
-    def on_delegation(self, task: str, result: str, *, child_session_id: str = "", **kwargs) -> None:
+    def on_delegation(
+        self,
+        task: str,
+        result: str,
+        *,
+        child_session_id: str = "",
+        **kwargs,
+    ) -> None:
         self._enqueue_event(
             "agent.delegation_completed",
             {
-                "idempotency_key": f"hermes:{self._session_id}:delegation:{child_session_id}:{abs(hash(task))}",
+                "idempotency_key": (
+                    f"hermes:{self._session_id}:delegation:{child_session_id}:{_digest(task, result)}"
+                ),
                 "task": task,
                 "result": result,
                 "child_session_id": child_session_id,
