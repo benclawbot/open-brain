@@ -1,12 +1,12 @@
 # Hermes Integration Progress
 
-Branch: `agent/context-packet-diversity`
+Branch: `agent/assertion-lifecycle-proposals`
 
 This file is the durable implementation ledger for the Open Brain × Hermes work. Update it whenever a meaningful slice lands.
 
 ## Overall status
 
-Current phase: **Diverse context packet composition**
+Current phase: **Evidence-backed assertion lifecycle proposals**
 
 ### Completed
 
@@ -49,13 +49,16 @@ Current phase: **Diverse context packet composition**
 - [x] Make feedback application idempotent per packet/item with a durable audit ledger.
 - [x] Reserve packet capacity across warnings, next actions, decisions, tasks, assertions, projects, and outcomes before filling by global rank.
 - [x] Preserve hard token and item limits while preventing one context kind from crowding out actionable state.
+- [x] Add deterministic assertion lifecycle proposals using harmfulness, usefulness, evidence conflict, authority, confidence, access patterns, importance, and temporal staleness.
+- [x] Protect confirmed assertions from automatic demotion or archival and keep every lifecycle action human-reviewable.
 
 ### Deferred maturity work
 
 - [ ] Add provider-specific normalization for additional external memory systems.
 - [ ] Add direct authenticated provider API clients; the current slice consumes exported/API-supplied records.
 - [ ] Expand database concurrency tests for event, identity, session, import, context, and feedback races.
-- [ ] Add lifecycle automation for consolidation, demotion, archival, and tombstones.
+- [ ] Persist lifecycle proposals and add explicit accept/reject/reverse workflows before any canonical assertion state mutation.
+- [ ] Add consolidation and tombstone proposals for duplicate or superseded knowledge.
 - [ ] Add evidence-backed self-improvement proposals and evaluation outcomes.
 
 ## Distribution
@@ -128,5 +131,6 @@ The current feature branch must not merge until the latest `Verify` run passes.
 - Feedback scoring updates counters only for context item IDs that resolve to canonical assertions; other item kinds remain audit-only.
 - The first accepted feedback disposition for a packet/item is immutable to prevent double-counting; corrections require a future explicit reversal workflow.
 - Diversity is best-effort inside the caller's hard token budget; an oversized item can still be skipped when it cannot fit.
+- Lifecycle evaluation currently produces reviewable proposals only; it intentionally performs no database mutation.
 - The installer tracks the default branch unless the user pins a reviewed release tag.
 - This remains alpha software despite the completed first-party Hermes integration.
