@@ -6,7 +6,7 @@ This file is the durable implementation ledger for the Open Brain × Hermes work
 
 ## Overall status
 
-Current phase: **Bootstrap import completion**
+Current phase: **Actionable context and distribution**
 
 ### Completed
 
@@ -20,30 +20,30 @@ Current phase: **Bootstrap import completion**
 - [x] Add Hermes session opening, closing, and reset/resume/branch/compression/rewind lineage.
 - [x] Define a provider-neutral, resumable import adapter contract.
 - [x] Add deterministic external IDs, SHA-256 hashes, dry-run/staged execution, cursor checkpoints, and source-change protection.
-- [x] Add safe `USER.md` and `MEMORY.md` discovery without automatic promotion.
-- [x] Add explicitly allowlisted context-file discovery with root-escape protection.
-- [x] Add JSON/JSONL session summary and transcript import as episodic candidates.
-- [x] Add skill discovery as procedural candidates requiring evaluation before activation.
-- [x] Add cron discovery as automation candidates while retaining Hermes as executor.
-- [x] Add contract tests for import parsing, resume safety, allowlist boundaries, session summaries, skills, and cron jobs.
+- [x] Add safe `USER.md`, `MEMORY.md`, allowlisted context, sessions, skills, and cron discovery without automatic promotion.
+- [x] Add structured project/task/decision/assertion/outcome retrieval.
+- [x] Add revision-aware, token-bounded context packets with trust and freshness labels.
+- [x] Add context feedback contracts and APIs.
+- [x] Add a one-line pipx installer.
+- [x] Add `openbrain update` with packaged, checksum-protected migrations.
+- [x] Correct the package layout so CLI modules and SQL migrations ship in installed distributions.
 
 ### In progress
 
+- [ ] Add context packet builder tests and API tests.
 - [ ] Add provider adapter capability declarations and provider-specific normalization.
 - [ ] Add rollback/tombstone metadata for staged imports.
-- [ ] Add database-backed tests for event, identity, session, and import concurrency.
-- [ ] Add structured active project/task/decision context lookup.
+- [ ] Add database-backed tests for event, identity, session, import, and context concurrency.
+- [ ] Add update compatibility checks and documented rollback behavior.
 
 ## Next implementation slices
 
-### Slice 4 — actionable context
+### Complete Slice 4 — actionable context
 
-- active project/task/decision queries
-- context revision increments
-- compact context packet builder
-- token and item budgets
-- trust and freshness labels
-- retrieval feedback contract
+- context API validation and tests
+- revision invalidation on project/task/decision mutations
+- packet diversity limits
+- feedback aggregation into assertion usefulness counters
 
 ### Slice 5 — Hermes provider
 
@@ -52,6 +52,22 @@ Current phase: **Bootstrap import completion**
 - cached `prefetch` and background `queue_prefetch`
 - `sync_turn`, `on_memory_write`, `on_session_switch`, `on_pre_compress`, `on_delegation`, and `on_session_end`
 - graceful degradation when Open Brain is unavailable
+
+### Distribution and updates
+
+One-line installation target:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
+```
+
+Update target:
+
+```bash
+openbrain update
+```
+
+Before release, the installer URL must point to a reviewed default-branch script or a pinned release tag. Updates must check compatibility, apply only additive migrations, preserve the migration checksum ledger, and provide a documented rollback path.
 
 ### Slice 6 — lifecycle and self-improvement
 
@@ -67,6 +83,8 @@ Current phase: **Bootstrap import completion**
 - `POST /v1/sessions/open`
 - `POST /v1/sessions/{session_id}/close`
 - `POST /v1/imports/hermes/markdown`
+- `POST /v1/context`
+- `POST /v1/context/feedback`
 
 ## Validation status
 
@@ -78,14 +96,22 @@ python scripts/migrate.py
 pytest -q
 ```
 
+The packaged install path must additionally validate:
+
+```bash
+pipx install 'git+https://github.com/benclawbot/open-brain.git@agent/hermes-foundation'
+openbrain --version
+openbrain update --skip-migrations
+```
+
 Database integration tests should run against PostgreSQL with pgvector enabled.
 
 ## Known risks
 
 - Migration `002_continuity_foundation.sql` is required before any `/v1` continuity endpoint is used.
-- Existing startup initializes the connection pool but does not automatically apply migrations; migration execution remains explicit for safety.
-- Database-backed idempotency, identity-link collision, and import-run concurrency tests are still missing.
+- Database-backed idempotency, identity-link collision, import-run, and context tests are still missing.
 - External identity aliases must never be silently reassigned between canonical users.
 - Imported records still require reconciliation to distinguish durable facts, instructions, notes, obsolete content, and provider inference.
 - Dry-run records are intentionally persisted for auditability but do not create assertions or mutate source systems.
+- The one-line installer must not be advertised from `master` until the PR is merged and installation smoke tests pass.
 - The Hermes provider has not been started; service contracts are being stabilized first.
