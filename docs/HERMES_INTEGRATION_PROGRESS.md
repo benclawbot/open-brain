@@ -6,7 +6,7 @@ This file is the durable implementation ledger for the Open Brain × Hermes work
 
 ## Overall status
 
-Current phase: **Bootstrap import execution**
+Current phase: **Bootstrap import completion**
 
 ### Completed
 
@@ -14,50 +14,29 @@ Current phase: **Bootstrap import execution**
 - [x] Confirm upstream `NousResearch/hermes-agent` as the only Hermes integration target.
 - [x] Define additive continuity schema covering identities, projects, tasks, sessions, events, assertions/evidence, decisions, outcomes, imports, and context revisions.
 - [x] Preserve the existing `memory` table and APIs for backward compatibility.
-- [x] Define strict Pydantic event contracts with namespaced event types, timezone-aware timestamps, scope, authority, sensitivity, and retention policy.
-- [x] Implement idempotent event persistence using a unique idempotency key.
-- [x] Expose `POST /v1/events` through the FastAPI application.
-- [x] Add a checksum-protected additive SQL migration runner.
-- [x] Add initial contract tests for event validation, scope, and authority.
-- [x] Add canonical user, agent, workspace, and platform-user identity contracts.
-- [x] Add optional external identity aliases for stable cross-gateway resolution.
-- [x] Implement idempotent identity resolution and metadata merging.
-- [x] Implement session opening and closing APIs.
-- [x] Preserve reset/resume/branch/compression/rewind lineage.
-- [x] Reject branch, resume, or compression lineage when the required parent is missing.
-- [x] Add identity and session contract tests.
+- [x] Define strict, provenance-aware event contracts and idempotent event persistence.
+- [x] Add checksum-protected additive migrations and the `/v1/events` API.
+- [x] Add canonical identity resolution with cross-platform aliases.
+- [x] Add Hermes session opening, closing, and reset/resume/branch/compression/rewind lineage.
 - [x] Define a provider-neutral, resumable import adapter contract.
-- [x] Add deterministic external IDs and SHA-256 source hashes.
-- [x] Add safe Hermes `USER.md` and `MEMORY.md` discovery.
-- [x] Preserve file path, section, ordinal, line form, source fingerprint, and authority on imported candidates.
-- [x] Keep imported records as candidates for reconciliation rather than silently promoting every line as truth.
-- [x] Persist import runs, per-record outcomes, counters, errors, and cursor checkpoints.
-- [x] Add dry-run and staged-import execution modes.
-- [x] Reject unsafe resume when the source fingerprint changes.
-- [x] Skip duplicate source records within a resumed run.
-- [x] Expose `POST /v1/imports/hermes/markdown`.
-- [x] Add isolated runner tests for preview, resume safety, and duplicate handling.
+- [x] Add deterministic external IDs, SHA-256 hashes, dry-run/staged execution, cursor checkpoints, and source-change protection.
+- [x] Add safe `USER.md` and `MEMORY.md` discovery without automatic promotion.
+- [x] Add explicitly allowlisted context-file discovery with root-escape protection.
+- [x] Add JSON/JSONL session summary and transcript import as episodic candidates.
+- [x] Add skill discovery as procedural candidates requiring evaluation before activation.
+- [x] Add cron discovery as automation candidates while retaining Hermes as executor.
+- [x] Add contract tests for import parsing, resume safety, allowlist boundaries, session summaries, skills, and cron jobs.
 
 ### In progress
 
-- [ ] Add context-file discovery with explicit allowlists.
-- [ ] Add session summary/transcript import.
-- [ ] Add skills and cron discovery.
 - [ ] Add provider adapter capability declarations and provider-specific normalization.
-- [ ] Add database-backed tests for import-run persistence and concurrent duplicate delivery.
+- [ ] Add rollback/tombstone metadata for staged imports.
+- [ ] Add database-backed tests for event, identity, session, and import concurrency.
 - [ ] Add structured active project/task/decision context lookup.
 
-### Next implementation slices
+## Next implementation slices
 
-#### Complete Slice 3 — bootstrap import
-
-- context-file importer
-- session summary/transcript importer
-- skills and cron discovery
-- provider adapter capability declarations
-- import rollback/tombstone metadata
-
-#### Slice 4 — actionable context
+### Slice 4 — actionable context
 
 - active project/task/decision queries
 - context revision increments
@@ -66,7 +45,7 @@ Current phase: **Bootstrap import execution**
 - trust and freshness labels
 - retrieval feedback contract
 
-#### Slice 5 — Hermes provider
+### Slice 5 — Hermes provider
 
 - upstream-compatible `OpenBrainMemoryProvider`
 - durable local spool
@@ -74,7 +53,7 @@ Current phase: **Bootstrap import execution**
 - `sync_turn`, `on_memory_write`, `on_session_switch`, `on_pre_compress`, `on_delegation`, and `on_session_end`
 - graceful degradation when Open Brain is unavailable
 
-#### Slice 6 — lifecycle and self-improvement
+### Slice 6 — lifecycle and self-improvement
 
 - consolidation and canonical assertion reconciliation
 - demotion, archival, tombstones, and retention policies
@@ -106,7 +85,7 @@ Database integration tests should run against PostgreSQL with pgvector enabled.
 - Migration `002_continuity_foundation.sql` is required before any `/v1` continuity endpoint is used.
 - Existing startup initializes the connection pool but does not automatically apply migrations; migration execution remains explicit for safety.
 - Database-backed idempotency, identity-link collision, and import-run concurrency tests are still missing.
-- External identity aliases must never be silently reassigned between canonical users; this requires an integration test under concurrent delivery.
-- Markdown imports preserve curated authority but still require reconciliation to distinguish durable facts, instructions, notes, and obsolete content.
-- Dry-run records are intentionally persisted in the import ledger for auditability, but do not create assertions or mutate source systems.
+- External identity aliases must never be silently reassigned between canonical users.
+- Imported records still require reconciliation to distinguish durable facts, instructions, notes, obsolete content, and provider inference.
+- Dry-run records are intentionally persisted for auditability but do not create assertions or mutate source systems.
 - The Hermes provider has not been started; service contracts are being stabilized first.
