@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 from importlib.metadata import PackageNotFoundError, version
+from importlib.resources import files
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -62,6 +65,29 @@ def update_cmd(skip_migrations: bool = False) -> int:
     return 0
 
 
+def install_hermes_cmd(hermes_home: str | None = None, force: bool = False) -> int:
+    """Install the packaged Open Brain provider into Hermes' standalone plugin directory."""
+    home = Path(hermes_home or os.environ.get("HERMES_HOME", "~/.hermes")).expanduser().resolve()
+    destination = home / "plugins" / "openbrain"
+    if destination.exists() and not force:
+        print(
+            f"Hermes plugin already exists at {destination}. Use --force to replace it.",
+            file=sys.stderr,
+        )
+        return 1
+
+    source = files("openbrain_hermes_plugin")
+    destination.mkdir(parents=True, exist_ok=True)
+    for name in ("__init__.py", "plugin.yaml", "README.md"):
+        resource = source.joinpath(name)
+        with resource.open("rb") as input_handle, (destination / name).open("wb") as output_handle:
+            shutil.copyfileobj(input_handle, output_handle)
+
+    print(f"Installed the Open Brain Hermes provider at {destination}")
+    print("Set OPENBRAIN_URL, then run `hermes memory setup` and select `openbrain`.")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="openbrain",
@@ -111,6 +137,10 @@ def main() -> int:
         help="Upgrade the package without applying database migrations",
     )
 
+    hermes_parser = subparsers.add_parser("install-hermes", help="Install the native Hermes memory provider")
+    hermes_parser.add_argument("--hermes-home", help="Override HERMES_HOME")
+    hermes_parser.add_argument("--force", action="store_true", help="Replace an existing Open Brain plugin")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -131,6 +161,8 @@ def main() -> int:
             return serve_cmd(args)
         if args.command == "update":
             return update_cmd(skip_migrations=args.skip_migrations)
+        if args.command == "install-hermes":
+            return install_hermes_cmd(args.hermes_home, args.force)
         parser.print_help()
         return 1
     except Exception as exc:
