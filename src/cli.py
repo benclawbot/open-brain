@@ -6,7 +6,6 @@ import argparse
 import subprocess
 import sys
 from importlib.metadata import PackageNotFoundError, version
-from pathlib import Path
 
 
 def _version() -> str:
@@ -32,19 +31,18 @@ def update_command(skip_migrations: bool = False) -> int:
         return getattr(exc, "returncode", 1) or 1
 
     if not skip_migrations:
-        migration_script = Path(__file__).resolve().parents[1] / "scripts" / "migrate.py"
-        if migration_script.exists():
-            try:
-                _run([sys.executable, str(migration_script)])
-            except subprocess.CalledProcessError as exc:
-                print(
-                    "Package updated, but database migration failed. Existing data was not deleted.",
-                    file=sys.stderr,
-                )
-                return exc.returncode or 1
-        else:
-            print("Package updated; migration script was not found in this installation.", file=sys.stderr)
+        try:
+            from db.migrate import apply_migrations
+
+            applied = apply_migrations()
+        except Exception as exc:
+            print(
+                f"Package updated, but database migration failed: {exc}. Existing data was not deleted.",
+                file=sys.stderr,
+            )
             return 1
+        if applied:
+            print("Applied migrations: " + ", ".join(applied))
 
     print(f"Open Brain is up to date ({_version()}).")
     return 0
