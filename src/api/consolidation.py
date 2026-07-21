@@ -7,9 +7,21 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 try:
-    from ..db.consolidation_queries import generate_consolidation_proposals, list_consolidation_proposals, resolve_consolidation_proposal
+    from ..db.consolidation_queries import (
+        apply_consolidation_proposal,
+        generate_consolidation_proposals,
+        list_consolidation_proposals,
+        resolve_consolidation_proposal,
+        reverse_consolidation_execution,
+    )
 except ImportError:
-    from db.consolidation_queries import generate_consolidation_proposals, list_consolidation_proposals, resolve_consolidation_proposal
+    from db.consolidation_queries import (
+        apply_consolidation_proposal,
+        generate_consolidation_proposals,
+        list_consolidation_proposals,
+        resolve_consolidation_proposal,
+        reverse_consolidation_execution,
+    )
 
 router = APIRouter(prefix="/consolidation", tags=["consolidation"])
 
@@ -22,6 +34,11 @@ class GenerationRequest(BaseModel):
 class ReviewRequest(BaseModel):
     state: Literal["accepted", "rejected"]
     reviewed_by: str = Field(min_length=1, max_length=200)
+    note: str | None = Field(default=None, max_length=4000)
+
+
+class ActorRequest(BaseModel):
+    actor: str = Field(min_length=1, max_length=200)
     note: str | None = Field(default=None, max_length=4000)
 
 
@@ -50,3 +67,27 @@ async def review(proposal_id: UUID, request: ReviewRequest) -> dict:
     if proposal is None:
         raise HTTPException(status_code=404, detail="Pending consolidation proposal not found")
     return proposal
+
+
+@router.post("/proposals/{proposal_id}/apply")
+async def apply(proposal_id: UUID, request: ActorRequest) -> dict:
+    try:
+        execution = apply_consolidation_proposal(proposal_id, applied_by=request.actor)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if execution is None:
+        raise HTTPException(status_code=404, detail="Consolidation proposal not found")
+    return execution
+
+
+@router.post("/executions/{execution_id}/reverse")
+async def reverse(execution_id: UUID, request: ActorRequest) -> dict:
+    try:
+        execution = reverse_consolidation_execution(
+            execution_id, reversed_by=request.actor, note=request.note
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if execution is None:
+        raise HTTPException(status_code=404, detail="Consolidation execution not found")
+    return execution
