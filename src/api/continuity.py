@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, status
 
+from api.compaction import router as compaction_router
 from api.consolidation import router as consolidation_router
 from api.context import router as context_router
 from api.imports import router as imports_router
@@ -18,6 +19,7 @@ router.include_router(context_router)
 router.include_router(lifecycle_router)
 router.include_router(consolidation_router)
 router.include_router(pruning_router)
+router.include_router(compaction_router)
 
 
 @router.post(
