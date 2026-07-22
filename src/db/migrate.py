@@ -29,10 +29,12 @@ def apply_migrations() -> list[str]:
     )
 
     with get_db_connection() as connection:
+        active_migration: str | None = None
         try:
             with connection.cursor() as cursor:
                 _ensure_ledger(cursor)
                 for resource in migration_files:
+                    active_migration = resource.name
                     content = resource.read_text(encoding="utf-8")
                     checksum = hashlib.sha256(content.encode("utf-8")).hexdigest()
                     cursor.execute(
@@ -53,7 +55,11 @@ def apply_migrations() -> list[str]:
                     )
                     applied.append(resource.name)
             connection.commit()
-        except Exception:
+        except Exception as exc:
             connection.rollback()
+            if active_migration:
+                raise RuntimeError(
+                    f"Migration {active_migration} failed: {exc}"
+                ) from exc
             raise
     return applied
