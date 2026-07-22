@@ -7,7 +7,23 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from compaction.engine import CompactionCandidate, POLICY_VERSION, build_summary, event_fingerprint, source_fingerprint
+try:
+    from ..compaction.engine import (
+        CompactionCandidate,
+        POLICY_VERSION,
+        build_summary,
+        event_fingerprint,
+        source_fingerprint,
+    )
+except ImportError:  # Support legacy execution with src/ directly on sys.path.
+    from compaction.engine import (
+        CompactionCandidate,
+        POLICY_VERSION,
+        build_summary,
+        event_fingerprint,
+        source_fingerprint,
+    )
+
 from .connection import get_db_cursor
 
 _SCOPE_COLUMNS = {
