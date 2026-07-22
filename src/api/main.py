@@ -17,14 +17,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from api.continuity import router as continuity_router
 from db.connection import init_db
-from db.queries import (
+from db.attribution import (
     search_memories,
     get_memory_by_id,
     insert_memory,
-    get_memory_stats,
-    get_today_memories,
-    get_recent_memories
+    get_recent_memories,
 )
+from db.queries import get_memory_stats, get_today_memories
 from embedder import create_embedding
 from extractors.entities import extract_entities
 from extractors.tagger import get_tagger
@@ -63,6 +62,7 @@ app.include_router(continuity_router)
 class MemoryCreate(BaseModel):
     content: str
     source: str = "api"
+    captured_by: Optional[str] = None
     tags: List[str] = []
     importance: float = 0.5
     metadata: dict = Field(default_factory=dict)
@@ -71,6 +71,7 @@ class MemoryCreate(BaseModel):
 class MemoryResponse(BaseModel):
     id: str
     source: str
+    captured_by: Optional[str] = None
     content: str
     tags: List[str]
     entities: dict
@@ -83,6 +84,7 @@ class SearchRequest(BaseModel):
     limit: int = 10
     sources: Optional[List[str]] = None
     tags: Optional[List[str]] = None
+    captured_by: Optional[List[str]] = None
 
 
 @app.get("/")
@@ -105,10 +107,11 @@ async def health():
 async def get_memories(
     limit: int = Query(50, le=100),
     offset: int = 0,
-    source: Optional[str] = None
+    source: Optional[str] = None,
+    captured_by: Optional[str] = None,
 ):
-    """Get all memories with pagination."""
-    memories = get_recent_memories(limit, offset, source)
+    """Get memories with optional transport and authoring-agent filters."""
+    memories = get_recent_memories(limit, offset, source, captured_by)
     return memories
 
 
@@ -117,6 +120,7 @@ async def create_memory(memory: MemoryCreate):
     """Create a new memory."""
     content = memory.content
     source = memory.source
+    captured_by = memory.captured_by
     user_tags = memory.tags
     importance = memory.importance
     metadata = memory.metadata
@@ -135,6 +139,7 @@ async def create_memory(memory: MemoryCreate):
 
     memory_id = insert_memory(
         source=source,
+        captured_by=captured_by,
         content=content,
         embedding=embedding,
         entities=entities,
@@ -147,7 +152,8 @@ async def create_memory(memory: MemoryCreate):
     return {
         "id": str(memory_id),
         "status": "stored",
-        "tags": tags
+        "tags": tags,
+        "captured_by": captured_by,
     }
 
 
@@ -169,11 +175,12 @@ async def get_memory(memory_id: str):
 
 @app.post("/memories/search", response_model=List[MemoryResponse])
 async def search_memories_endpoint(search: SearchRequest):
-    """Search memories by query."""
+    """Search memories by semantic content and structured filters."""
     query = search.query
     limit = search.limit
     sources = search.sources
     tags = search.tags
+    captured_by = search.captured_by
 
     embedding = None
     if query:
@@ -187,14 +194,15 @@ async def search_memories_endpoint(search: SearchRequest):
         embedding=embedding,
         limit=limit,
         sources=sources,
-        tags=tags
+        tags=tags,
+        captured_by=captured_by,
     )
 
-    for r in results:
-        if hasattr(r.get("created_at", ""), "isoformat"):
-            r["created_at"] = r["created_at"].isoformat()
-        elif isinstance(r, dict) and "created_at" in r and not isinstance(r["created_at"], str):
-            r["created_at"] = str(r["created_at"])
+    for result in results:
+        if hasattr(result.get("created_at", ""), "isoformat"):
+            result["created_at"] = result["created_at"].isoformat()
+        elif "created_at" in result and not isinstance(result["created_at"], str):
+            result["created_at"] = str(result["created_at"])
 
     return results
 
@@ -219,8 +227,3 @@ async def get_weekly_report(days: int = Query(7, le=30)):
     """Generate weekly report."""
     report = generate_weekly_report(days)
     return {"report": report}
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
