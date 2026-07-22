@@ -35,11 +35,14 @@ class OpenBrainProviderClient:
             timeout=timeout if timeout is not None else config.timeout,
             api_key=api_key if api_key is not None else config.api_key,
         )
+        headers = resolved.headers(descriptor.provider_id, descriptor.version)
         self._client = client or httpx.Client(
             base_url=resolved.base_url,
             timeout=resolved.timeout,
-            headers=resolved.headers(descriptor.provider_id, descriptor.version),
+            headers=headers,
         )
+        if client is not None:
+            self._client.headers.update(headers)
 
     def health(self) -> dict[str, Any]:
         response = self._client.get("/health")
