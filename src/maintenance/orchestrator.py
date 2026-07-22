@@ -9,14 +9,14 @@ from typing import Any, Callable
 from uuid import UUID, uuid4
 
 try:
-    from ..compaction.engine import CompactionPolicy, compact_scope
     from ..context.cache import cleanup_context_cache, context_cache_stats
+    from ..db.compaction_queries import compact_events
     from ..db.connection import get_db_cursor
     from ..db.consolidation_queries import generate_consolidation_proposals
     from ..db.pruning_queries import generate_pruning_proposals
 except ImportError:
-    from compaction.engine import CompactionPolicy, compact_scope
     from context.cache import cleanup_context_cache, context_cache_stats
+    from db.compaction_queries import compact_events
     from db.connection import get_db_cursor
     from db.consolidation_queries import generate_consolidation_proposals
     from db.pruning_queries import generate_pruning_proposals
@@ -80,6 +80,27 @@ def _run_step(name: str, operation: Callable[[], Any]) -> dict[str, Any]:
         }
 
 
+def _run_compaction(options: MaintenanceOptions) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    scopes = (
+        ("project", options.compact_project_id),
+        ("task", options.compact_task_id),
+    )
+    for scope_type, scope_id in scopes:
+        if scope_id is None:
+            continue
+        results.extend(
+            compact_events(
+                scope_type=scope_type,
+                scope_id=scope_id,
+                minimum_events=options.compaction_min_events,
+                limit=options.compaction_max_events,
+                dry_run=options.dry_run,
+            )
+        )
+    return results
+
+
 def run_maintenance(options: MaintenanceOptions) -> dict[str, Any]:
     """Run all maintenance checks and return a complete auditable report."""
     options.validate()
@@ -132,21 +153,7 @@ def run_maintenance(options: MaintenanceOptions) -> dict[str, Any]:
     )
 
     if options.compact_project_id or options.compact_task_id:
-        policy = CompactionPolicy(
-            minimum_events=options.compaction_min_events,
-            maximum_events=options.compaction_max_events,
-        )
-        steps.append(
-            _run_step(
-                "compaction",
-                lambda: compact_scope(
-                    project_id=options.compact_project_id,
-                    task_id=options.compact_task_id,
-                    policy=policy,
-                    dry_run=options.dry_run,
-                ),
-            )
-        )
+        steps.append(_run_step("compaction", lambda: _run_compaction(options)))
     else:
         steps.append({
             "name": "compaction",
