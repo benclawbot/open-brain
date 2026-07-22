@@ -17,7 +17,9 @@ try:
         reverse_lifecycle_execution,
     )
     from ..lifecycle.execution import LifecycleExecutionError
+    from .proposals import ProposalActorRequest, ProposalReviewRequest
 except ImportError:  # Support legacy execution with src/ directly on sys.path.
+    from api.proposals import ProposalActorRequest, ProposalReviewRequest
     from db.lifecycle_queries import (
         apply_lifecycle_proposal,
         generate_lifecycle_proposals,
@@ -33,21 +35,6 @@ router = APIRouter(prefix="/lifecycle", tags=["lifecycle"])
 class ProposalGenerationRequest(BaseModel):
     limit: int = Field(default=250, ge=1, le=1000)
     minimum_score: float = Field(default=0.25, ge=0, le=1)
-
-
-class ProposalReviewRequest(BaseModel):
-    state: Literal["accepted", "rejected"]
-    reviewed_by: str = Field(min_length=1, max_length=200)
-    note: str | None = Field(default=None, max_length=4000)
-
-
-class ProposalApplyRequest(BaseModel):
-    applied_by: str = Field(min_length=1, max_length=200)
-
-
-class ProposalReverseRequest(BaseModel):
-    reversed_by: str = Field(min_length=1, max_length=200)
-    note: str | None = Field(default=None, max_length=4000)
 
 
 @router.post("/proposals/generate", status_code=status.HTTP_201_CREATED)
@@ -77,7 +64,7 @@ async def review_proposal(proposal_id: UUID, request: ProposalReviewRequest) -> 
             proposal_id, state=request.state, reviewed_by=request.reviewed_by, note=request.note
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     if proposal is None:
@@ -86,9 +73,9 @@ async def review_proposal(proposal_id: UUID, request: ProposalReviewRequest) -> 
 
 
 @router.post("/proposals/{proposal_id}/apply")
-async def apply_proposal(proposal_id: UUID, request: ProposalApplyRequest) -> dict:
+async def apply_proposal(proposal_id: UUID, request: ProposalActorRequest) -> dict:
     try:
-        execution = apply_lifecycle_proposal(proposal_id, applied_by=request.applied_by)
+        execution = apply_lifecycle_proposal(proposal_id, applied_by=request.actor)
     except LifecycleExecutionError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
@@ -99,10 +86,10 @@ async def apply_proposal(proposal_id: UUID, request: ProposalApplyRequest) -> di
 
 
 @router.post("/executions/{execution_id}/reverse")
-async def reverse_execution(execution_id: UUID, request: ProposalReverseRequest) -> dict:
+async def reverse_execution(execution_id: UUID, request: ProposalActorRequest) -> dict:
     try:
         execution = reverse_lifecycle_execution(
-            execution_id, reversed_by=request.reversed_by, note=request.note
+            execution_id, reversed_by=request.actor, note=request.note
         )
     except LifecycleExecutionError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
