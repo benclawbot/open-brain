@@ -4,17 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openbrain"
-version = "0.2.0"
+version = "1.0.0"
 description = "Shared personal memory, agent continuity, and actionable context"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "Tom", email = "tom@example.com"}
+    {name = "Ben Clawbot"}
 ]
 keywords = ["memory", "agents", "semantic-search", "mcp", "postgres", "pgvector"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
