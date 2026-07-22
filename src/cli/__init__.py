@@ -67,7 +67,6 @@ def install_hermes_cmd(hermes_home: str | None = None, force: bool = False) -> i
             file=sys.stderr,
         )
         return 1
-
     source = Path(__file__).resolve().parents[1] / "openbrain_hermes_plugin"
     required = ("__init__.py", "plugin.yaml", "README.md")
     missing = [name for name in required if not (source / name).is_file()]
@@ -77,11 +76,9 @@ def install_hermes_cmd(hermes_home: str | None = None, force: bool = False) -> i
             file=sys.stderr,
         )
         return 1
-
     destination.mkdir(parents=True, exist_ok=True)
     for name in required:
         shutil.copy2(source / name, destination / name)
-
     print(f"Installed the Open Brain Hermes provider at {destination}")
     print("Set OPENBRAIN_URL, then run `hermes memory setup` and select `openbrain`.")
     return 0
@@ -112,11 +109,7 @@ def main() -> int:
     stats_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
     import_parser = subparsers.add_parser("import", help="Import from source")
-    import_parser.add_argument(
-        "source",
-        choices=["telegram", "whatsapp", "claude_code", "gmail", "file"],
-        help="Source type",
-    )
+    import_parser.add_argument("source", choices=["telegram", "whatsapp", "claude_code", "gmail", "file"])
     import_parser.add_argument("path", help="Path to import from")
     import_parser.add_argument("--limit", "-n", type=int, help="Limit number of imports")
 
@@ -130,15 +123,21 @@ def main() -> int:
     serve_parser.add_argument("--reload", action="store_true", help="Auto-reload on changes")
 
     update_parser = subparsers.add_parser("update", help="Upgrade Open Brain and apply additive migrations")
-    update_parser.add_argument(
-        "--skip-migrations",
-        action="store_true",
-        help="Upgrade the package without applying database migrations",
-    )
+    update_parser.add_argument("--skip-migrations", action="store_true")
 
     hermes_parser = subparsers.add_parser("install-hermes", help="Install the native Hermes memory provider")
     hermes_parser.add_argument("--hermes-home", help="Override HERMES_HOME")
-    hermes_parser.add_argument("--force", action="store_true", help="Replace an existing Open Brain plugin")
+    hermes_parser.add_argument("--force", action="store_true")
+
+    maintenance_parser = subparsers.add_parser("maintenance", help="Run bounded maintenance orchestration")
+    maintenance_parser.add_argument("--apply", action="store_true", help="Persist changes; default is dry-run")
+    maintenance_parser.add_argument("--proposal-limit", type=int, default=500)
+    maintenance_parser.add_argument("--cache-max-rows", type=int, default=5000)
+    maintenance_parser.add_argument("--tombstone-retention-days", type=int, default=90)
+    maintenance_parser.add_argument("--project-id")
+    maintenance_parser.add_argument("--task-id")
+    maintenance_parser.add_argument("--compaction-min-events", type=int, default=8)
+    maintenance_parser.add_argument("--compaction-max-events", type=int, default=200)
 
     args = parser.parse_args()
     if not args.command:
@@ -148,32 +147,29 @@ def main() -> int:
     try:
         if args.command == "search":
             from .search import search_memories_cmd
-
             return search_memories_cmd(args)
         if args.command == "store":
             from .store import store_memory_cmd
-
             return store_memory_cmd(args)
         if args.command == "stats":
             from .stats import stats_cmd
-
             return stats_cmd(args)
         if args.command == "import":
             from .import_data import import_cmd
-
             return import_cmd(args)
         if args.command == "report":
             from .report import report_cmd
-
             return report_cmd(args)
         if args.command == "serve":
             from .serve import serve_cmd
-
             return serve_cmd(args)
         if args.command == "update":
             return update_cmd(skip_migrations=args.skip_migrations)
         if args.command == "install-hermes":
             return install_hermes_cmd(args.hermes_home, args.force)
+        if args.command == "maintenance":
+            from .maintenance import maintenance_cmd
+            return maintenance_cmd(args)
         parser.print_help()
         return 1
     except Exception as exc:
