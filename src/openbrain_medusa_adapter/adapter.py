@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import httpx
@@ -17,6 +15,7 @@ from src.providers import (
     RecallRequest,
     RememberRequest,
 )
+from src.providers.reconciliation import JsonlSpoolReconciler
 
 from .models import MedusaSessionContext, RecallResult
 
@@ -47,8 +46,8 @@ class MedusaMemoryAdapter:
         self,
         context: MedusaSessionContext,
         *,
-        base_url: str = "http://127.0.0.1:8000",
-        timeout: float = 3.0,
+        base_url: str | None = None,
+        timeout: float | None = None,
         client: OpenBrainProviderClient | None = None,
     ) -> None:
         self.context = context
@@ -130,23 +129,15 @@ class MedusaMemoryAdapter:
     def session_ended(self, outcome: str | None = None) -> dict[str, Any]:
         return self._remember("session.ended", "end", {"outcome": outcome})
 
-    def replay_spool(self) -> dict[str, int]:
-        path = self.context.effective_spool_path()
-        if not path.exists():
-            return {"replayed": 0, "remaining": 0}
+    def replay_spool(self, *, max_attempts: int = 5) -> dict[str, int]:
+        reconciler = JsonlSpoolReconciler(
+            self.context.effective_spool_path(), max_attempts=max_attempts
+        )
 
-        pending = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-        remaining: list[dict[str, Any]] = []
-        replayed = 0
-        for payload in pending:
-            request_payload = {key: value for key, value in payload.items() if key != "spooled_at"}
-            try:
-                self.client.remember(RememberRequest.model_validate(request_payload))
-                replayed += 1
-            except (httpx.HTTPError, OSError):
-                remaining.append(payload)
-        self._write_spool(path, remaining)
-        return {"replayed": replayed, "remaining": len(remaining)}
+        def deliver(payload: dict[str, Any]) -> None:
+            self.client.remember(RememberRequest.model_validate(payload))
+
+        return reconciler.replay(deliver).as_dict()
 
     def close(self) -> None:
         self.client.close()
@@ -182,16 +173,6 @@ class MedusaMemoryAdapter:
         return f"medusa:{digest}:{record_key}"[:512]
 
     def _append_spool(self, request: RememberRequest) -> None:
-        path = self.context.effective_spool_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
         record = request.model_dump(mode="json")
         record["spooled_at"] = datetime.now(timezone.utc).isoformat()
-        with path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record, sort_keys=True) + "\n")
-
-    @staticmethod
-    def _write_spool(path: Path, records: list[dict[str, Any]]) -> None:
-        if not records:
-            path.unlink(missing_ok=True)
-            return
-        path.write_text("".join(json.dumps(item, sort_keys=True) + "\n" for item in records))
+        JsonlSpoolReconciler.append(self.context.effective_spool_path(), record)
