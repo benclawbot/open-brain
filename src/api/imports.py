@@ -1,4 +1,4 @@
-"""REST endpoints for previewing, staging, and rolling back imports."""
+"""REST endpoints for previewing, staging, sealing, and rolling back imports."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from importers.base import ImportSource
 from importers.hermes_markdown import HermesMarkdownImporter
 from importers.providers import provider_adapter, provider_descriptors
 from importers.runner import ImportSummary, run_import
+from importers.staging import seal_import_run
 
 router = APIRouter(tags=["imports"])
 
@@ -35,6 +36,21 @@ class ProviderImportRequest(BaseModel):
     source_instance: str | None = Field(default=None, max_length=512)
     dry_run: bool = True
     resume_run_id: UUID | None = None
+
+
+class ImportSealRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    actor: str = Field(min_length=1, max_length=255)
+    expected_records: int | None = Field(default=None, ge=0)
+
+
+class ImportSealResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: UUID
+    status: str
+    config: dict[str, Any]
 
 
 class ImportRollbackRequest(BaseModel):
@@ -112,6 +128,25 @@ async def import_provider_records(request: ProviderImportRequest) -> ImportSumma
             dry_run=request.dry_run,
             resume_run_id=request.resume_run_id,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post(
+    "/imports/{run_id}/seal",
+    response_model=ImportSealResponse,
+    summary="Validate and seal an immutable staged import candidate set",
+)
+async def seal_import(run_id: UUID, request: ImportSealRequest) -> ImportSealResponse:
+    try:
+        result = seal_import_run(
+            run_id,
+            actor=request.actor,
+            expected_records=request.expected_records,
+        )
+        return ImportSealResponse.model_validate(result)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
