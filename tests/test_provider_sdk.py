@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import httpx
 
 from src.providers import (
@@ -33,11 +35,11 @@ def test_provider_client_conforms_to_protocol() -> None:
     assert isinstance(client, MemoryProvider)
 
 
-def test_recall_normalizes_scope_and_budgets() -> None:
+def test_recall_normalizes_supported_scope_and_budgets() -> None:
     captured: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        captured.update(request.read() and __import__("json").loads(request.content))
+        captured.update(json.loads(request.content))
         return httpx.Response(200, json={"items": []})
 
     http_client = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://test")
@@ -45,18 +47,22 @@ def test_recall_normalizes_scope_and_budgets() -> None:
 
     result = client.recall(
         RecallRequest(
-            query="continue the refactor",
-            scope=ProviderScope(project_id="00000000-0000-0000-0000-000000000001"),
+            scope=ProviderScope(
+                project_id="00000000-0000-0000-0000-000000000001",
+                session_id="00000000-0000-0000-0000-000000000002",
+            ),
             token_budget=900,
             max_items=12,
+            include_history=True,
         )
     )
 
     assert result == {"items": []}
-    assert captured["query"] == "continue the refactor"
     assert captured["project_id"] == "00000000-0000-0000-0000-000000000001"
     assert captured["token_budget"] == 900
     assert captured["max_items"] == 12
+    assert captured["include_history"] is True
+    assert "session_id" not in captured
     assert "task_id" not in captured
 
 
@@ -64,7 +70,7 @@ def test_remember_sets_provider_identity_and_is_idempotent_by_contract() -> None
     captured: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        captured.update(__import__("json").loads(request.content))
+        captured.update(json.loads(request.content))
         return httpx.Response(201, json={"id": "event-1", "duplicate": False})
 
     http_client = httpx.Client(transport=httpx.MockTransport(handler), base_url="http://test")
