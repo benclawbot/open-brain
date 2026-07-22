@@ -139,8 +139,9 @@ class MedusaMemoryAdapter:
         remaining: list[dict[str, Any]] = []
         replayed = 0
         for payload in pending:
+            request_payload = {key: value for key, value in payload.items() if key != "spooled_at"}
             try:
-                self.client.remember(RememberRequest.model_validate(payload))
+                self.client.remember(RememberRequest.model_validate(request_payload))
                 replayed += 1
             except (httpx.HTTPError, OSError):
                 remaining.append(payload)
