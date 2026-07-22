@@ -89,7 +89,12 @@ def test_failed_write_is_spooled_and_replayed(tmp_path: Path) -> None:
 
     replay = adapter.replay_spool()
 
-    assert replay == {"replayed": 1, "remaining": 0}
+    assert replay == {
+        "replayed": 1,
+        "remaining": 0,
+        "quarantined": 0,
+        "dead_lettered": 0,
+    }
     assert not spool.exists()
 
 
