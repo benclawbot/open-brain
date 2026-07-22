@@ -53,6 +53,7 @@ dev = [
 
 [project.scripts]
 openbrain = "src.cli:main"
+openbrain-adapters = "src.cli.adapters:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
