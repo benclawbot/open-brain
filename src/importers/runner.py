@@ -39,13 +39,16 @@ def run_import(
 ) -> ImportSummary:
     """Execute one deterministic import pass.
 
-    Candidates are persisted only as import records. Promotion into assertions,
-    projects, tasks, or decisions is deliberately deferred to reconciliation.
+    Candidates are persisted only as import records. Dry runs finish in the
+    ``previewed`` state. Real imports finish in the ``staged`` state and require
+    an explicit validation seal before any later promotion step.
     """
     if resume_run_id:
         existing = get_import_run(resume_run_id)
         if existing is None:
             raise ValueError(f"import run not found: {resume_run_id}")
+        if existing.get("status") in {"sealed", "rolled_back"}:
+            raise ValueError(f"{existing['status']} imports cannot be resumed")
         run_id = UUID(str(existing["id"]))
         config = existing.get("config") or {}
         if isinstance(config, str):
@@ -102,9 +105,10 @@ def run_import(
                 records_rejected=counters["rejected"],
             )
 
+        final_status = "previewed" if dry_run else "staged"
         update_import_run(
             run_id,
-            status="completed",
+            status=final_status,
             cursor_value=cursor,
             records_seen=counters["seen"],
             records_imported=counters["imported"],
@@ -126,7 +130,7 @@ def run_import(
 
     return ImportSummary(
         run_id=run_id,
-        status="completed",
+        status=final_status,
         dry_run=dry_run,
         records_seen=counters["seen"],
         records_imported=counters["imported"],
