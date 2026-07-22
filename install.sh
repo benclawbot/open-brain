@@ -3,6 +3,7 @@ set -eu
 
 REPO_URL="${OPENBRAIN_REPO_URL:-https://github.com/benclawbot/open-brain.git}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+HERMES_MODE="${OPENBRAIN_INSTALL_HERMES:-auto}"
 
 command -v "$PYTHON_BIN" >/dev/null 2>&1 || {
   echo "Python 3.11+ is required." >&2
@@ -23,18 +24,24 @@ else
   PIPX_BIN="$(command -v pipx)"
 fi
 
-if "$PIPX_BIN" list --short 2>/dev/null | grep -q '^openbrain '; then
+if "$PIPX_BIN" list --short 2>/dev/null | grep -q 'openbrain'; then
   "$PIPX_BIN" upgrade openbrain
 else
   "$PIPX_BIN" install "git+$REPO_URL"
 fi
 
+if [ "$HERMES_MODE" = "1" ] || [ "$HERMES_MODE" = "true" ] || { [ "$HERMES_MODE" = "auto" ] && command -v hermes >/dev/null 2>&1; }; then
+  openbrain install-hermes --force
+fi
+
+openbrain doctor
 cat <<'EOF'
 Open Brain installed.
 
-Next:
-  openbrain --version
+Useful commands:
+  openbrain version-check
   openbrain update
+  openbrain maintenance
 
 Restart your shell if the openbrain command is not yet on PATH.
 EOF

@@ -39,6 +39,7 @@ dependencies = [
     "pydantic-settings>=2.1.0",
     "nltk>=3.8.1",
     "mcp>=1.0.0",
+    "packaging>=24.0",
 ]
 
 [project.optional-dependencies]
