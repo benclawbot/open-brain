@@ -53,15 +53,14 @@ class ProviderScope(BaseModel):
 
 
 class RecallRequest(BaseModel):
-    """Transport-neutral request for an actionable context packet."""
+    """Request for the server's actionable context packet."""
 
     model_config = ConfigDict(extra="forbid")
 
-    query: str | None = Field(default=None, max_length=16_000)
     scope: ProviderScope = Field(default_factory=ProviderScope)
-    token_budget: int = Field(default=1600, ge=128, le=32_000)
-    max_items: int = Field(default=20, ge=1, le=200)
-    include_stale: bool = False
+    token_budget: int = Field(default=1600, ge=128, le=12_000)
+    max_items: int = Field(default=20, ge=1, le=100)
+    include_history: bool = False
 
 
 class RememberRequest(BaseModel):
