@@ -44,14 +44,19 @@ class OpenBrainProviderClient:
         return payload
 
     def recall(self, request: RecallRequest) -> dict[str, Any]:
+        scope = request.scope
         payload = {
-            "query": request.query,
+            "user_identity_id": str(scope.user_identity_id) if scope.user_identity_id else None,
+            "project_id": str(scope.project_id) if scope.project_id else None,
+            "task_id": str(scope.task_id) if scope.task_id else None,
             "token_budget": request.token_budget,
             "max_items": request.max_items,
-            "include_stale": request.include_stale,
-            **request.scope.model_dump(mode="json", exclude_none=True),
+            "include_history": request.include_history,
         }
-        response = self._client.post("/v1/context", json=payload)
+        response = self._client.post(
+            "/v1/context",
+            json={key: value for key, value in payload.items() if value is not None},
+        )
         response.raise_for_status()
         return response.json()
 
