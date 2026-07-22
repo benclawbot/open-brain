@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS memory (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     source VARCHAR(50) NOT NULL,
     source_id VARCHAR(255),
+    captured_by TEXT,
     content TEXT NOT NULL,
     raw_content TEXT,
     embedding vector(1536),
@@ -28,6 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_memory_embedding ON memory USING hnsw (embedding 
 CREATE INDEX IF NOT EXISTS idx_memory_entities ON memory USING gin (entities);
 CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory USING gin (tags);
 CREATE INDEX IF NOT EXISTS idx_memory_source ON memory (source);
+CREATE INDEX IF NOT EXISTS idx_memory_captured_by ON memory (captured_by);
 CREATE INDEX IF NOT EXISTS idx_memory_created ON memory (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_memory_original_date ON memory (original_date DESC);
 
@@ -77,4 +79,3 @@ BEGIN
     FROM memory;
 END;
 $$ LANGUAGE plpgsql;
-
