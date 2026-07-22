@@ -7,37 +7,49 @@ from typing import Any
 import httpx
 
 from src.providers.contracts import ProviderDescriptor, RecallRequest, RememberRequest
+from src.providers.host_config import HostAdapterConfig
 
 
 class OpenBrainProviderClient:
     """Small synchronous client implementing the universal provider contract.
 
-    The client owns its HTTP transport unless one is injected for tests or host
-    lifecycle management. Errors remain explicit via ``httpx.HTTPStatusError``;
-    adapters may layer spooling or fallback behavior without hidden data loss.
+    Connection settings default to ``OPENBRAIN_URL``, ``OPENBRAIN_API_KEY``, and
+    ``OPENBRAIN_TIMEOUT`` so installed hosts work without bespoke Python wiring.
+    Explicit constructor values remain available for embedding and tests.
     """
 
     def __init__(
         self,
         descriptor: ProviderDescriptor,
         *,
-        base_url: str = "http://127.0.0.1:8000",
-        timeout: float = 3.0,
+        base_url: str | None = None,
+        timeout: float | None = None,
+        api_key: str | None = None,
         client: httpx.Client | None = None,
     ) -> None:
         self.descriptor = descriptor
         self._owns_client = client is None
+        config = HostAdapterConfig.from_env()
+        resolved = HostAdapterConfig(
+            base_url=(base_url or config.base_url).rstrip("/"),
+            timeout=timeout if timeout is not None else config.timeout,
+            api_key=api_key if api_key is not None else config.api_key,
+        )
         self._client = client or httpx.Client(
-            base_url=base_url.rstrip("/"),
-            timeout=timeout,
-            headers={
-                "User-Agent": f"openbrain-provider/{descriptor.provider_id}/{descriptor.version}",
-                "X-OpenBrain-Provider": descriptor.provider_id,
-            },
+            base_url=resolved.base_url,
+            timeout=resolved.timeout,
+            headers=resolved.headers(descriptor.provider_id, descriptor.version),
         )
 
     def health(self) -> dict[str, Any]:
         response = self._client.get("/health")
+        response.raise_for_status()
+        payload = response.json()
+        payload["provider"] = self.descriptor.model_dump(mode="json")
+        return payload
+
+    def ready(self) -> dict[str, Any]:
+        response = self._client.get("/ready")
         response.raise_for_status()
         payload = response.json()
         payload["provider"] = self.descriptor.model_dump(mode="json")
@@ -65,6 +77,7 @@ class OpenBrainProviderClient:
             "event_type": request.event_type,
             "idempotency_key": request.idempotency_key,
             "source_system": self.descriptor.provider_id,
+            "captured_by": self.descriptor.provider_id,
             "source_record_id": request.source_record_id,
             "scope": request.scope.model_dump(mode="json", exclude_none=True),
             "authority": request.authority.value,
