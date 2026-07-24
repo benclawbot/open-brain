@@ -1,0 +1,12 @@
+# Force LF line endings for shell scripts and Python sources so the repo is
+# checked out cleanly on every platform. Without this, Windows checkouts with
+# core.autocrlf=true reintroduce CRLF into *.sh files, which makes them
+# unexecutable on Linux (bash sees "/bin/bash\r" as the interpreter path).
+*.sh         text eol=lf
+*.py         text eol=lf
+*.sql        text eol=lf
+*.yaml       text eol=lf
+*.yml        text eol=lf
+*.toml       text eol=lf
+*.md         text eol=lf
+Dockerfile   text eol=lf

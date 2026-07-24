@@ -9,7 +9,7 @@ embedder:
   provider: ollama
   model: nomic-embed-text
   dimensions: 768
-  ollama_base_url: http://localhost:11434
+  ollama_base_url: http://ollama:11434
 
 mcp:
   transport: stdio

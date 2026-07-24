@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS memory (
     captured_by TEXT,
     content TEXT NOT NULL,
     raw_content TEXT,
-    embedding vector(1536),
+    embedding vector(768),
     entities JSONB DEFAULT '{}',
     tags TEXT[] DEFAULT '{}',
     tag_sources JSONB DEFAULT '{}',

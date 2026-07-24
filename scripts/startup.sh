@@ -33,6 +33,13 @@ else
   fi
 fi
 
+# Apply any pending migrations (idempotent; no-op when ledger is up to date).
+echo "Applying migrations..."
+PYTHONPATH=/app python scripts/migrate.py || {
+  echo "Migration apply failed; refusing to start API."
+  exit 1
+}
+
 # Start the application
 echo "Starting application..."
 exec "$@"

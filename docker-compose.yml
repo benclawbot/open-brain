@@ -5,6 +5,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      ollama:
+        condition: service_started
     env_file:
     - .env
     environment:
@@ -13,9 +15,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
       DB_PORT: 5432
       DB_USER: postgres
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_BASE_URL: http://ollama:11434
     ports:
-    - 8000:8000
+    - 127.0.0.1:${API_PORT:-8765}:8000
   dashboard:
     build: .
     command: streamlit run ui/dashboard.py --server.port=8501 --server.address=0.0.0.0
@@ -32,7 +34,7 @@ services:
       DB_USER: postgres
       STREAMLIT_PORT: 8501
     ports:
-    - 8501:8501
+    - 127.0.0.1:${DASHBOARD_PORT:-8501}:8501
     volumes:
     - ./.streamlit:/root/.streamlit
   postgres:
@@ -53,5 +55,18 @@ services:
     - "127.0.0.1:${DB_HOST_PORT:-5433}:5432"
     volumes:
     - postgres_data:/var/lib/postgresql/data
+  ollama:
+    container_name: openbrain-ollama
+    image: ollama/ollama:latest
+    ports:
+    - 127.0.0.1:11434:11434
+    volumes:
+    - ollama_data:/root/.ollama
+    healthcheck:
+      interval: 10s
+      retries: 6
+      test: ["CMD", "ollama", "list"]
+      timeout: 5s
 volumes:
   postgres_data: null
+  ollama_data: null

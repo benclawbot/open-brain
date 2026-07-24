@@ -93,13 +93,36 @@ Integration guides:
 
 ## Installation
 
-Open Brain requires Python 3.11+ and PostgreSQL with pgvector.
+Open Brain requires Python 3.11+ and Docker (Docker Desktop on Windows / macOS, docker Engine on Linux). The default docker-compose stack uses a local [Ollama](https://ollama.com) service for embeddings, so no external API key is required.
 
-Review and run the current installer:
+### One-line install (recommended)
+
+```bash
+git clone https://github.com/benclawbot/open-brain.git
+cd open-brain
+bash scripts/quickstart.sh --with-hermes
+```
+
+`scripts/quickstart.sh` is idempotent: it copies `.env.example` to `.env` on first run, brings up the docker stack, waits for the api to become healthy, ensures the embedding model is available, and (with `--with-hermes`) wires Open Brain into a locally-installed Hermes as the active memory provider. If Hermes is not on PATH the integration step is skipped with a follow-up hint rather than failing.
+
+### Manual install
+
+```bash
+git clone https://github.com/benclawbot/open-brain.git
+cd open-brain
+cp .env.example .env
+docker compose up -d --build
+docker exec openbrain-ollama ollama pull nomic-embed-text   # one-time
+docker compose ps
+```
+
+### Just the CLI (no docker stack)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
 ```
+
+The installer uses `pipx`, keeping Open Brain isolated from system Python packages. It generates a private OpenBrain API key once in `~/.config/openbrain/.env`; upgrades reuse that key. This path is intended for users who already have a Postgres+pgvector instance elsewhere — the docker stack on this repo is the supported local-stack path.
 
 Verify:
 
@@ -108,8 +131,6 @@ openbrain --version
 openbrain --help
 ```
 
-The installer uses `pipx`, keeping Open Brain isolated from system Python packages. It also generates a private OpenBrain API key once in `~/.config/openbrain/.env`; upgrades reuse that key.
-
 ### Hermes
 
 ```bash
@@ -117,7 +138,7 @@ openbrain install-hermes
 hermes memory setup
 ```
 
-Select `openbrain` as the active memory provider when prompted.
+Select `openbrain` as the active memory provider when prompted. `quickstart.sh --with-hermes` does both steps automatically when hermes is on PATH.
 
 Optional scope variables:
 
@@ -152,19 +173,26 @@ DB_TIMEZONE=auto
 ```
 
 ```bash
+bash scripts/quickstart.sh           # recommended
+# or, step by step:
 openbrain configure --project-root .
 docker compose up -d --build
 docker compose ps
 ```
 
-| Service | Address |
-|---|---|
-| REST API | `http://localhost:8000` |
-| API documentation | `http://localhost:8000/docs` |
-| Dashboard | `http://localhost:8501` |
-| PostgreSQL from the host | `localhost:5433` |
+| Service       | Address                              | Notes                                        |
+|---            |---                                   |---                                           |
+| REST API      | `http://127.0.0.1:8765`              | Override `API_PORT` in `.env` to change      |
+| API docs      | `http://127.0.0.1:8765/docs`         | FastAPI / OpenAPI                            |
+| Dashboard     | `http://127.0.0.1:8501`              | Streamlit                                    |
+| PostgreSQL    | `127.0.0.1:5433`                     | From the host (compose publishes 5432→5433)  |
+| Ollama        | `127.0.0.1:11434`                    | Embeddings service (HTTP API)                |
 
-The API container applies pending migrations during startup. Containers reach PostgreSQL as `postgres:5432`; programs running on the host use the published port `localhost:5433`.
+The default API port is **8765** rather than 8000 because the Windows IP Helper service (`iphlpsvc`) often holds port 8000 on Windows hosts, which would prevent the api container from binding. Override `API_PORT` in `.env` if you need a different port.
+
+The API container applies pending migrations on startup, then starts uvicorn. Containers reach PostgreSQL as `postgres:5432` and Ollama as `ollama:11434` over the internal compose network. From the host, use the published ports above.
+
+The compose stack ships its own Ollama service running the `nomic-embed-text` model (768-dim). To use a hosted embeddings provider instead, set `EMBEDDER_PROVIDER` in `.env` to `openrouter` or `openai` and provide the matching API key, then edit `config/settings.yaml` to point at the new model and dimensions. The schema migration `015_embedding_dim_change.sql` alters `memory.embedding` to `vector(768)` to match the default embedder; if you switch to a 1536-dim model you must add a new migration that alters the column back (existing embeddings are lost).
 
 Already-applied migrations must never be edited. Add a new migration instead.
 

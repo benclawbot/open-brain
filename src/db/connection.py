@@ -4,6 +4,7 @@ Database connection management for Open Brain.
 import logging
 import os
 import pathlib
+import uuid
 from contextlib import contextmanager
 from typing import Optional
 
@@ -13,6 +14,12 @@ from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)
+
+# Ensure Python uuid.UUID instances are adapted to PostgreSQL UUID columns.
+# Without this registration, queries that pass a uuid.UUID parameter raise
+# "can't adapt type 'UUID'" because psycopg2's default adapters do not cover
+# the standard-library type.
+psycopg2.extensions.register_adapter(uuid.UUID, psycopg2.extras.UUID_adapter)
 
 
 def _detect_local_timezone() -> str:

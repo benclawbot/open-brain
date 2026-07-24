@@ -22,13 +22,19 @@ def load_config():
 
 
 def get_connection(config, database=None):
-    """Get a database connection."""
+    """Get a database connection.
+
+    Environment variables override config file values so that docker-compose
+    and other container runtimes can inject the runtime host/port without
+    editing config/settings.yaml.
+    """
+    db = config['database']
     return psycopg2.connect(
-        host=config['database']['host'],
-        port=config['database']['port'],
-        database=database or config['database']['name'],
-        user=config['database']['user'],
-        password=os.environ.get('DB_PASSWORD', config['database'].get('password', ''))
+        host=os.environ.get('DB_HOST', db['host']),
+        port=int(os.environ.get('DB_PORT', db['port'])),
+        database=database or os.environ.get('DB_NAME', db['name']),
+        user=os.environ.get('DB_USER', db['user']),
+        password=os.environ.get('DB_PASSWORD', db.get('password', ''))
     )
 
 
