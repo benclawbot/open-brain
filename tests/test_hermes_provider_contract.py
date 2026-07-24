@@ -43,6 +43,7 @@ def test_client_loads_generated_key_and_authenticates(tmp_path, monkeypatch):
     )
     monkeypatch.setenv("OPENBRAIN_CONFIG_DIR", str(config_dir))
     monkeypatch.delenv("OPENBRAIN_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
 
     captured = {}
 
