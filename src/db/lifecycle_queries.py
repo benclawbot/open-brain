@@ -7,17 +7,10 @@ import json
 from typing import Any
 from uuid import UUID
 
-try:
-    from .connection import get_db_cursor
-except ImportError:  # Support legacy execution with src/ directly on sys.path.
-    from db.connection import get_db_cursor
+from .connection import get_db_cursor
 
-try:
-    from ..lifecycle.assertions import AssertionLifecycleInput, evaluate_assertion_lifecycle
-    from ..lifecycle.execution import validate_execution_contract, validate_reversal_contract
-except ImportError:  # Support legacy execution with src/ directly on sys.path.
-    from lifecycle.assertions import AssertionLifecycleInput, evaluate_assertion_lifecycle
-    from lifecycle.execution import validate_execution_contract, validate_reversal_contract
+from ..lifecycle.assertions import AssertionLifecycleInput, evaluate_assertion_lifecycle
+from ..lifecycle.execution import validate_execution_contract, validate_reversal_contract
 
 POLICY_VERSION = "assertion-lifecycle-v1"
 

@@ -6,7 +6,7 @@
 curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
 ```
 
-The installer verifies Python 3.11+, installs or upgrades Open Brain through `pipx`, detects Hermes, installs the bundled Hermes provider when Hermes is present, and runs `openbrain doctor`.
+The installer verifies Python 3.11+, installs or upgrades Open Brain through `pipx`, generates a private API key in `~/.config/openbrain/.env`, detects Hermes, installs the bundled Hermes provider when Hermes is present, and runs `openbrain doctor`. Repeated installs preserve the existing key.
 
 Set `OPENBRAIN_INSTALL_HERMES=0` to skip automatic Hermes wiring. Set `OPENBRAIN_REPO_URL` to install from a fork.
 
@@ -18,7 +18,7 @@ Automatic installation copies the packaged provider into `${HERMES_HOME:-~/.herm
 openbrain install-hermes --force
 ```
 
-Then set `OPENBRAIN_URL` and select `openbrain` from `hermes memory setup`.
+Then select `openbrain` from `hermes memory setup`. The local URL and generated API key load automatically.
 
 ## Other coding agents
 

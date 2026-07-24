@@ -8,12 +8,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
-try:
-    from .models import ContextPacket, ContextRequest
-    from ..db.connection import get_db_cursor
-except ImportError:  # Support legacy execution with src/ directly on sys.path.
-    from context.models import ContextPacket, ContextRequest
-    from db.connection import get_db_cursor
+from .models import ContextPacket, ContextRequest
+from ..db.connection import get_db_cursor
 
 CACHE_TTL_SECONDS = 300
 MAX_CACHE_ROWS = 5000

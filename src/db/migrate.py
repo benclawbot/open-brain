@@ -3,9 +3,41 @@
 from __future__ import annotations
 
 import hashlib
+import re
+from collections import defaultdict
 from importlib.resources import files
 
 from src.db.connection import get_db_connection, init_db
+
+
+_MIGRATION_NAME = re.compile(r"^(?P<sequence>\d+)_")
+_LEGACY_DUPLICATE_SEQUENCES = {
+    "011": frozenset(
+        {
+            "011_assertion_pruning_execution.sql",
+            "011_context_retrieval_indexes.sql",
+        }
+    ),
+}
+
+
+def validate_migration_sequence(filenames: list[str]) -> None:
+    """Reject ambiguous migration numbers except the documented v1.0 legacy pair."""
+    grouped: dict[str, set[str]] = defaultdict(set)
+    for filename in filenames:
+        match = _MIGRATION_NAME.match(filename)
+        if not match:
+            raise RuntimeError(f"invalid migration filename: {filename}")
+        grouped[match.group("sequence")].add(filename)
+
+    for sequence, names in grouped.items():
+        if len(names) < 2:
+            continue
+        if _LEGACY_DUPLICATE_SEQUENCES.get(sequence) == frozenset(names):
+            continue
+        raise RuntimeError(
+            f"duplicate migration sequence {sequence}: {', '.join(sorted(names))}"
+        )
 
 
 def _ensure_ledger(cursor) -> None:
@@ -27,6 +59,7 @@ def apply_migrations() -> list[str]:
     migration_files = sorted(
         item for item in migration_root.iterdir() if item.name.endswith(".sql")
     )
+    validate_migration_sequence([resource.name for resource in migration_files])
 
     with get_db_connection() as connection:
         active_migration: str | None = None

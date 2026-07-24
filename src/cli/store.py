@@ -1,7 +1,6 @@
 """
 Store command for CLI.
 """
-import json
 import sys
 from argparse import Namespace
 
@@ -43,7 +42,7 @@ def store_memory_cmd(args: Namespace) -> int:
         metadata={}
     )
     
-    print(f"Memory stored successfully!")
+    print("Memory stored successfully!")
     print(f"ID: {memory_id}")
     print(f"Tags: {', '.join(tags.keys())}")
     

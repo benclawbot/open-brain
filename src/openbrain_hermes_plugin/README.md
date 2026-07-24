@@ -11,9 +11,10 @@ openbrain install-hermes
 Then configure Hermes:
 
 ```bash
-export OPENBRAIN_URL=http://127.0.0.1:8000
 hermes memory setup
 ```
+
+The OpenBrain installer generates and loads the local URL and API key automatically. Explicit `OPENBRAIN_URL` and `OPENBRAIN_API_KEY` environment variables can override them for remote deployments.
 
 Select `openbrain` as the active provider when prompted, or set `memory.provider: openbrain` in the active Hermes configuration.
 

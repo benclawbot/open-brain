@@ -2,16 +2,11 @@
 Weekly report generation for Open Brain.
 Generates markdown reports of memory activity.
 """
-import sys
-import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Dict, List
 
-# Add src to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from db import queries
-from analytics.trends import TrendAnalyzer
+from ..db import queries
+from .trends import TrendAnalyzer
 
 
 class WeeklyReport:
@@ -35,7 +30,7 @@ class WeeklyReport:
         report_lines = [
             "# 📊 Open Brain Weekly Report",
             "",
-            f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"**Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
             f"**Period:** Last {self.days} days",
             "",
             "---",
@@ -149,8 +144,8 @@ class WeeklyReport:
         memories = queries.get_memories_for_report(self.days)
         
         lines = [
-            f"# Weekly Memory Report",
-            f"",
+            "# Weekly Memory Report",
+            "",
             f"Week: {stats['this_week']} | Month: {stats['this_month']} | Total: {stats['total']}",
             "",
         ]

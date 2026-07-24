@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from api.proposals import ProposalActorRequest, ProposalReviewRequest
+from src.api.proposals import ProposalActorRequest, ProposalReviewRequest
 
 
 def test_acceptance_allows_optional_note() -> None:

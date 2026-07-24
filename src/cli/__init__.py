@@ -7,21 +7,16 @@ import os
 import shutil
 import subprocess
 import sys
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
-from dotenv import load_dotenv
+from src.runtime_config import configure_runtime_environment, load_runtime_environment
+from src.version import get_version
 
-_dotenv_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
-if os.path.exists(_dotenv_path):
-    load_dotenv(_dotenv_path)
+load_runtime_environment()
 
 
 def _version() -> str:
-    try:
-        return version("openbrain")
-    except PackageNotFoundError:
-        return "development"
+    return get_version()
 
 
 def _run(command: list[str]) -> None:
@@ -65,7 +60,14 @@ def install_hermes_cmd(hermes_home: str | None = None, force: bool = False) -> i
     for name in required:
         shutil.copy2(source / name, destination / name)
     print(f"Installed the Open Brain Hermes provider at {destination}")
-    print("Set OPENBRAIN_URL, then run `hermes memory setup` and select `openbrain`.")
+    print("Run `hermes memory setup` and select `openbrain`; credentials load automatically.")
+    return 0
+
+
+def configure_cmd(project_root: str | None = None) -> int:
+    """Create or reuse private credentials without printing the secret."""
+    path = configure_runtime_environment(Path(project_root) if project_root else None)
+    print(f"Open Brain credentials configured at {path}")
     return 0
 
 
@@ -106,6 +108,12 @@ def main() -> int:
 
     update_parser = subparsers.add_parser("update", help="Upgrade Open Brain and apply additive migrations")
     update_parser.add_argument("--skip-migrations", action="store_true")
+
+    configure_parser = subparsers.add_parser(
+        "configure",
+        help="Generate private local credentials",
+    )
+    configure_parser.add_argument("--project-root")
 
     hermes_parser = subparsers.add_parser("install-hermes", help="Install the native Hermes memory provider")
     hermes_parser.add_argument("--hermes-home")
@@ -151,6 +159,8 @@ def main() -> int:
             return serve_cmd(args)
         if args.command == "update":
             return update_cmd(skip_migrations=args.skip_migrations)
+        if args.command == "configure":
+            return configure_cmd(args.project_root)
         if args.command == "install-hermes":
             return install_hermes_cmd(args.hermes_home, args.force)
         if args.command == "maintenance":

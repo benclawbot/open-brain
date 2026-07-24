@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Shared personal memory, agent continuity, and actionable context"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Ben Clawbot"}
 ]
@@ -16,7 +16,6 @@ keywords = ["memory", "agents", "semantic-search", "mcp", "postgres", "pgvector"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]

@@ -2,16 +2,11 @@
 Core tests for Open Brain.
 """
 import os
-import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 import pytest
-
-# Add src to path for legacy top-level imports exercised by the existing suite.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
 
 class TestConfig:
     """Test configuration loading."""
@@ -38,26 +33,26 @@ class TestEntityExtractor:
     """Test entity extraction."""
 
     def test_email_extraction(self):
-        from extractors.entities import extract_entities
+        from src.extractors.entities import extract_entities
 
         entities = extract_entities("Contact me at test@example.com")
         assert 'test@example.com' in entities['emails']
 
     def test_url_extraction(self):
-        from extractors.entities import extract_entities
+        from src.extractors.entities import extract_entities
 
         entities = extract_entities("Check out https://github.com/test/repo")
         assert any('github.com' in url for url in entities['urls'])
 
     def test_hashtag_extraction(self):
-        from extractors.entities import extract_entities
+        from src.extractors.entities import extract_entities
 
         entities = extract_entities("Great #python #ai project")
         assert '#python' in entities['hashtags']
         assert '#ai' in entities['hashtags']
 
     def test_technology_extraction(self):
-        from extractors.entities import extract_entities
+        from src.extractors.entities import extract_entities
 
         entities = extract_entities("Built with Python and React")
         assert 'python' in entities['technologies']
@@ -68,28 +63,28 @@ class TestTagger:
     """Test auto-tagging."""
 
     def test_keyword_tagging(self):
-        from extractors.tagger import auto_tag
+        from src.extractors.tagger import auto_tag
 
         tags = auto_tag("Working on a Python bug fix")
         assert 'python' in tags
         assert 'bug' in tags
 
     def test_pattern_tagging(self):
-        from extractors.tagger import auto_tag
+        from src.extractors.tagger import auto_tag
 
         tags = auto_tag("How to fix this error?")
         assert 'error' in tags
         assert 'question' in tags
 
     def test_user_tags(self):
-        from extractors.tagger import auto_tag
+        from src.extractors.tagger import auto_tag
 
         tags = auto_tag("Some note", user_tags=['important', 'review'])
         assert 'important' in tags
         assert 'review' in tags
 
     def test_deny_list(self):
-        from extractors.tagger import Tagger
+        from src.extractors.tagger import Tagger
 
         tagger = Tagger()
         tags = tagger.tag("test", user_tags=['password', 'valid_tag'])
@@ -110,7 +105,7 @@ class TestEmbedder:
 
     @patch('requests.post')
     def test_embed_creation(self, mock_post):
-        from embedder import OllamaEmbedder
+        from src.embedder import OllamaEmbedder
 
         mock_response = Mock()
         mock_response.json.return_value = {'embedding': [0.1] * 768}
@@ -125,7 +120,7 @@ class TestEmbedder:
 
     @patch('requests.post')
     def test_batch_embedding(self, mock_post):
-        from embedder import OllamaEmbedder
+        from src.embedder import OllamaEmbedder
 
         mock_response = Mock()
         mock_response.json.return_value = {'embedding': [0.1] * 768}
@@ -143,7 +138,7 @@ class TestAnalytics:
     """Test analytics functions."""
 
     def test_trend_analyzer_init(self):
-        from analytics.trends import TrendAnalyzer
+        from src.analytics.trends import TrendAnalyzer
 
         analyzer = TrendAnalyzer(weeks=4)
         assert analyzer.weeks == 4
@@ -153,13 +148,13 @@ class TestMemoryFormatting:
     """Test memory formatting functions."""
 
     def test_format_empty_list(self):
-        from main import format_memory_list
+        from src.main import format_memory_list
 
         result = format_memory_list([])
         assert "No memories found" in result
 
     def test_format_memory_list(self):
-        from main import format_memory_list
+        from src.main import format_memory_list
 
         memories = [
             {
@@ -167,7 +162,7 @@ class TestMemoryFormatting:
                 'source': 'test',
                 'content': 'Test content',
                 'tags': ['test'],
-                'created_at': datetime.now()
+                'created_at': datetime.now(timezone.utc)
             }
         ]
 
@@ -180,9 +175,9 @@ class TestMemoryFormatting:
 class TestDatabaseQueries:
     """Test database query functions with realistic cursor mocks."""
 
-    @patch('db.queries.get_db_cursor')
+    @patch('src.db.queries.get_db_cursor')
     def test_search_memories(self, mock_cursor):
-        from db import queries
+        from src.db import queries
 
         mock_ctx = Mock()
         mock_ctx.__enter__ = Mock(return_value=mock_ctx)
@@ -193,9 +188,9 @@ class TestDatabaseQueries:
         results = queries.search_memories("test", limit=5)
         assert isinstance(results, list)
 
-    @patch('db.queries.get_db_cursor')
+    @patch('src.db.queries.get_db_cursor')
     def test_get_memory_stats(self, mock_cursor):
-        from db import queries
+        from src.db import queries
 
         mock_ctx = Mock()
         mock_ctx.__enter__ = Mock(return_value=mock_ctx)

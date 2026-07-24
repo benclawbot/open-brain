@@ -1,14 +1,15 @@
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 
-from api.imports import ImportRollbackRequest, ImportRollbackResponse
+from src.api.imports import ImportRollbackRequest, ImportRollbackResponse
 
 
 def test_rollback_request_requires_actor_and_reason():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         ImportRollbackRequest(actor="", reason="cleanup")
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         ImportRollbackRequest(actor="operator", reason="")
 
 

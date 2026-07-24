@@ -12,12 +12,14 @@ Usage:
 """
 
 import asyncio
-import json
+import logging
+import shlex
 import uuid
-from datetime import timedelta
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 from dataclasses import dataclass
 import subprocess
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -63,16 +65,18 @@ class DockerSandbox:
         self.cpu_limit = cpu_limit
         self._container_id: Optional[str] = None
     
-    def _ensure_image(self) -> bool:
+    async def _ensure_image(self) -> bool:
         """Pull image if needed."""
         try:
-            result = subprocess.run(
+            result = await asyncio.to_thread(
+                subprocess.run,
                 ["docker", "pull", self.image],
                 capture_output=True,
-                timeout=60
+                timeout=60,
+                check=False,
             )
             return result.returncode == 0
-        except Exception:
+        except (OSError, subprocess.SubprocessError):
             return False
     
     async def run(
@@ -100,7 +104,7 @@ class DockerSandbox:
         timeout = timeout or self.timeout
         
         # Ensure image exists
-        if not self._ensure_image():
+        if not await self._ensure_image():
             return ExecutionResult(
                 success=False,
                 stdout="",
@@ -138,11 +142,13 @@ class DockerSandbox:
         cmd.extend([self.image, "sh", "-c", command])
         
         try:
-            result = subprocess.run(
+            result = await asyncio.to_thread(
+                subprocess.run,
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
+                check=False,
             )
             
             duration_ms = int((time.time() - start) * 1000)
@@ -157,8 +163,12 @@ class DockerSandbox:
             
         except subprocess.TimeoutExpired:
             # Kill the container if still running
-            subprocess.run(["docker", "kill", container_name], 
-                         capture_output=True)
+            await asyncio.to_thread(
+                subprocess.run,
+                ["docker", "kill", container_name],
+                capture_output=True,
+                check=False,
+            )
             return ExecutionResult(
                 success=False,
                 stdout="",
@@ -183,7 +193,7 @@ class DockerSandbox:
         timeout: Optional[int] = None
     ) -> ExecutionResult:
         """Run Python code in the sandbox."""
-        return await self.run(f"python3 -c '{code.replace(\"'\", \"'\\\\\")\")}'", timeout=timeout)
+        return await self.run(f"python3 -c {shlex.quote(code)}", timeout=timeout)
     
     def is_available(self) -> bool:
         """Check if Docker is available."""
@@ -191,7 +201,8 @@ class DockerSandbox:
             result = subprocess.run(
                 ["docker", "version"],
                 capture_output=True,
-                timeout=5
+                timeout=5,
+                check=False,
             )
             return result.returncode == 0
         except Exception:
@@ -221,20 +232,36 @@ class DockerSandboxPool:
         for i in range(self.pool_size):
             container_name = f"sandbox-pool-{i}-{uuid.uuid4().hex[:4]}"
             try:
-                subprocess.run([
-                    "docker", "run", "-d",
-                    "--name", container_name,
-                    "--network", "none",
-                    "--memory", "512m",
-                    "--cpus", "1.0",
-                    "--read-only",
-                    "--tmpfs", "/tmp:rw,size=64m",
-                    self.image,
-                    "sleep", "infinity"
-                ], capture_output=True, timeout=30)
-                self._containers.append(container_name)
-            except Exception:
-                pass
+                result = await asyncio.to_thread(
+                    subprocess.run,
+                    [
+                        "docker", "run", "-d",
+                        "--name", container_name,
+                        "--network", "none",
+                        "--memory", "512m",
+                        "--cpus", "1.0",
+                        "--read-only",
+                        "--tmpfs", "/tmp:rw,size=64m",
+                        self.image,
+                        "sleep", "infinity",
+                    ],
+                    capture_output=True,
+                    timeout=30,
+                    check=False,
+                )
+                if result.returncode == 0:
+                    self._containers.append(container_name)
+                else:
+                    logger.warning(
+                        "Could not start sandbox pool container %s",
+                        container_name,
+                    )
+            except (OSError, subprocess.SubprocessError) as exc:
+                logger.warning(
+                    "Could not start sandbox pool container %s: %s",
+                    container_name,
+                    exc,
+                )
     
     async def execute(self, command: str) -> ExecutionResult:
         """Execute command in a pooled container."""
@@ -247,10 +274,14 @@ class DockerSandboxPool:
         container = self._containers[0]
         
         try:
-            result = subprocess.run([
-                "docker", "exec", container,
-                "sh", "-c", command
-            ], capture_output=True, text=True, timeout=self.timeout)
+            result = await asyncio.to_thread(
+                subprocess.run,
+                ["docker", "exec", container, "sh", "-c", command],
+                capture_output=True,
+                text=True,
+                timeout=self.timeout,
+                check=False,
+            )
             
             return ExecutionResult(
                 success=result.returncode == 0,
@@ -272,8 +303,18 @@ class DockerSandboxPool:
     async def cleanup(self):
         """Stop and remove all pooled containers."""
         for container in self._containers:
-            subprocess.run(["docker", "kill", container], capture_output=True)
-            subprocess.run(["docker", "rm", container], capture_output=True)
+            await asyncio.to_thread(
+                subprocess.run,
+                ["docker", "kill", container],
+                capture_output=True,
+                check=False,
+            )
+            await asyncio.to_thread(
+                subprocess.run,
+                ["docker", "rm", container],
+                capture_output=True,
+                check=False,
+            )
         self._containers = []
 
 

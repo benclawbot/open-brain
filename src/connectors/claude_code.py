@@ -3,10 +3,8 @@ Claude Code session log connector.
 Imports conversations from Claude Code session logs.
 """
 import json
-import os
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, Generator, List, Optional
+from typing import Dict, List, Optional
 
 from ..db.queries import insert_memory
 from ..embedder import create_embedding

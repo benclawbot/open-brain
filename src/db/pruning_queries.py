@@ -7,17 +7,10 @@ import json
 from typing import Any
 from uuid import UUID
 
-try:
-    from .connection import get_db_cursor
-except ImportError:
-    from db.connection import get_db_cursor
+from .connection import get_db_cursor
 
-try:
-    from ..pruning.assertions import PruningCandidate, propose_pruning
-    from ..pruning.execution import validate_archive_contract, validate_restore_contract
-except ImportError:
-    from pruning.assertions import PruningCandidate, propose_pruning
-    from pruning.execution import validate_archive_contract, validate_restore_contract
+from ..pruning.assertions import PruningCandidate, propose_pruning
+from ..pruning.execution import validate_archive_contract, validate_restore_contract
 
 POLICY_VERSION = "assertion-pruning-v1"
 

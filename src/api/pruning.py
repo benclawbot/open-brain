@@ -6,26 +6,15 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-try:
-    from ..db.pruning_queries import (
+from .proposals import ProposalActorRequest, ProposalReviewRequest
+from ..db.pruning_queries import (
         apply_pruning_proposal,
         generate_pruning_proposals,
         list_pruning_proposals,
         restore_tombstone,
         review_pruning_proposal,
     )
-    from ..pruning.execution import PruningConflict
-    from .proposals import ProposalActorRequest, ProposalReviewRequest
-except ImportError:
-    from api.proposals import ProposalActorRequest, ProposalReviewRequest
-    from db.pruning_queries import (
-        apply_pruning_proposal,
-        generate_pruning_proposals,
-        list_pruning_proposals,
-        restore_tombstone,
-        review_pruning_proposal,
-    )
-    from pruning.execution import PruningConflict
+from ..pruning.execution import PruningConflict
 
 router = APIRouter(prefix="/pruning", tags=["pruning"])
 

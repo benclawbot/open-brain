@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from db.compaction_queries import compact_events
+from ..db.compaction_queries import compact_events
 
 router = APIRouter(prefix="/compaction", tags=["compaction"])
 

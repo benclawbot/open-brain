@@ -8,17 +8,10 @@ from collections import defaultdict
 from typing import Any
 from uuid import UUID
 
-try:
-    from .connection import get_db_cursor
-except ImportError:
-    from db.connection import get_db_cursor
+from .connection import get_db_cursor
 
-try:
-    from ..consolidation.assertions import AssertionCandidate, propose_consolidation
-    from ..consolidation.execution import validate_execution_contract, validate_reversal_contract
-except ImportError:
-    from consolidation.assertions import AssertionCandidate, propose_consolidation
-    from consolidation.execution import validate_execution_contract, validate_reversal_contract
+from ..consolidation.assertions import AssertionCandidate, propose_consolidation
+from ..consolidation.execution import validate_execution_contract, validate_reversal_contract
 
 POLICY_VERSION = "assertion-consolidation-v1"
 

@@ -2,7 +2,7 @@
 Telegram bot notifier for Open Brain.
 """
 import os
-from typing import List, Optional
+from typing import List
 
 import requests
 
@@ -57,7 +57,7 @@ class TelegramNotifier:
     
     def send_memory_alert(self, memory_content: str, tags: List[str]) -> bool:
         """Send an alert when important memory is stored."""
-        message = f"🧠 *New Memory Stored*\n\n"
+        message = "🧠 *New Memory Stored*\n\n"
         message += f"{memory_content[:200]}...\n\n"
         if tags:
             message += f"Tags: {', '.join(['#' + t for t in tags])}"
@@ -66,7 +66,7 @@ class TelegramNotifier:
     
     def send_stats_digest(self, stats: dict) -> bool:
         """Send daily stats digest."""
-        message = f"📊 *Open Brain Daily Digest*\n\n"
+        message = "📊 *Open Brain Daily Digest*\n\n"
         message += f"Total Memories: {stats.get('total', 0)}\n"
         
         by_source = stats.get('by_source', {})

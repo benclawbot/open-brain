@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import httpx
@@ -36,7 +37,32 @@ def test_install_and_uninstall_env_file(tmp_path: Path):
 
     assert installed == path
     assert "OPENBRAIN_API_KEY=secret" in path.read_text()
-    assert oct(path.stat().st_mode & 0o777) == "0o600"
+    if os.name == "nt":
+        import win32api
+        import win32con
+        import win32security
+
+        token = win32security.OpenProcessToken(
+            win32api.GetCurrentProcess(),
+            win32con.TOKEN_QUERY,
+        )
+        current_user_sid = win32security.ConvertSidToStringSid(
+            win32security.GetTokenInformation(token, win32security.TokenUser)[0]
+        )
+        descriptor = win32security.GetFileSecurity(
+            str(path),
+            win32security.DACL_SECURITY_INFORMATION,
+        )
+        dacl = descriptor.GetSecurityDescriptorDacl()
+        trustee_sids = {
+            win32security.ConvertSidToStringSid(dacl.GetAce(index)[2])
+            for index in range(dacl.GetAceCount())
+        }
+        assert current_user_sid in trustee_sids
+        assert "S-1-1-0" not in trustee_sids
+        assert "S-1-5-11" not in trustee_sids
+    else:
+        assert oct(path.stat().st_mode & 0o777) == "0o600"
     assert uninstall_env_file(path) is True
     assert uninstall_env_file(path) is False
 

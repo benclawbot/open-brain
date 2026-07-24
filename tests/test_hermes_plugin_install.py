@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from src.cli import install_hermes_cmd
 

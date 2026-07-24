@@ -6,8 +6,8 @@ import json
 from typing import Any
 from uuid import UUID
 
-from db.connection import get_db_cursor
-from importers.base import ImportCandidate
+from .connection import get_db_cursor
+from ..importers.base import ImportCandidate
 
 
 def create_import_run(

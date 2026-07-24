@@ -95,10 +95,10 @@ Integration guides:
 
 Open Brain requires Python 3.11+ and PostgreSQL with pgvector.
 
-For a reproducible v1.0.0 installation, review and run the release-pinned installer:
+Review and run the current installer:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/v1.0.0/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/install.sh | sh
 ```
 
 Verify:
@@ -108,13 +108,12 @@ openbrain --version
 openbrain --help
 ```
 
-The installer uses `pipx`, keeping Open Brain isolated from system Python packages.
+The installer uses `pipx`, keeping Open Brain isolated from system Python packages. It also generates a private OpenBrain API key once in `~/.config/openbrain/.env`; upgrades reuse that key.
 
 ### Hermes
 
 ```bash
 openbrain install-hermes
-export OPENBRAIN_URL=http://127.0.0.1:8000
 hermes memory setup
 ```
 
@@ -144,15 +143,16 @@ pip install -e '.[dev]'
 
 ```env
 DB_HOST=localhost
-DB_PORT=5432
+DB_PORT=5433
+DB_HOST_PORT=5433
 DB_NAME=openbrain
 DB_USER=postgres
-DB_PASSWORD=change-me
+DB_PASSWORD=replace-with-a-random-password
 DB_TIMEZONE=auto
 ```
 
 ```bash
-cp .env.example .env
+openbrain configure --project-root .
 docker compose up -d --build
 docker compose ps
 ```
@@ -167,6 +167,14 @@ docker compose ps
 The API container applies pending migrations during startup. Containers reach PostgreSQL as `postgres:5432`; programs running on the host use the published port `localhost:5433`.
 
 Already-applied migrations must never be edited. Add a new migration instead.
+
+## API keys
+
+`OPENBRAIN_API_KEY` protects the OpenBrain HTTP API and the memories stored behind it. It is OpenBrain's own shared secret—not a key issued by OpenAI, OpenRouter, or another model provider. The installer generates it automatically, stores it in the private per-user environment file, and the API, provider SDK, host adapters, and Hermes plugin load it transparently. `openbrain configure --project-root .` copies the same key into the project's private `.env` and generates its database password. Existing credentials are preserved on upgrades and repeated configuration runs.
+
+Production mode (`OPENBRAIN_ENV=production`) requires authentication and refuses to start without this key. You normally do not need to view or copy it. Explicit environment variables still take precedence when connecting to a remote OpenBrain deployment.
+
+Embedding-provider keys are separate. Set `OPENROUTER_API_KEY` or `OPENAI_API_KEY` only when using that hosted provider for semantic embeddings. Create those keys in the provider's account dashboard. A local Ollama server does not require an API key.
 
 ## CLI
 

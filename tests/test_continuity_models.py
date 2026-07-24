@@ -24,7 +24,7 @@ def test_event_requires_timezone_aware_timestamp():
             idempotency_key="hermes:test:0002",
             source_system="hermes",
             payload={"content": "hello"},
-            occurred_at=datetime(2026, 7, 21, 12, 0, 0),
+            occurred_at=datetime(2026, 7, 21, 12, 0, 0),  # noqa: DTZ001 - intentionally naive
         )
 
 

@@ -2,11 +2,10 @@
 WhatsApp export connector.
 Imports messages from WhatsApp chat export.
 """
-import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Generator, List, Optional
+from typing import Dict, Optional
 
 from ..db.queries import insert_memory
 from ..embedder import create_embedding
@@ -80,12 +79,18 @@ class WhatsAppConnector:
             if ',' not in date_str:
                 # Already in simple format
                 pass
-            parsed_date = datetime.strptime(date_str, '%m/%d/%Y %I:%M %p')
+            parsed_date = datetime.strptime(
+                date_str,
+                '%m/%d/%Y %I:%M %p',
+            ).replace(tzinfo=datetime.now(timezone.utc).astimezone().tzinfo)
         except ValueError:
             try:
-                parsed_date = datetime.strptime(date_str, '%m/%d/%y %H:%M')
+                parsed_date = datetime.strptime(
+                    date_str,
+                    '%m/%d/%y %H:%M',
+                ).replace(tzinfo=datetime.now(timezone.utc).astimezone().tzinfo)
             except ValueError:
-                parsed_date = datetime.now()
+                parsed_date = datetime.now(timezone.utc)
         
         return {
             'date': parsed_date,

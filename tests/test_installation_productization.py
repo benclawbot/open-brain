@@ -35,8 +35,11 @@ def test_version_check_is_offline_safe(monkeypatch):
 def test_installer_wires_hermes_and_runs_doctor():
     script = Path("install.sh").read_text(encoding="utf-8")
     assert "OPENBRAIN_INSTALL_HERMES" in script
-    assert "openbrain install-hermes --force" in script
-    assert "openbrain doctor" in script
+    assert script.index('"$OPENBRAIN_BIN" configure') < script.index(
+        '"$OPENBRAIN_BIN" install-hermes --force'
+    )
+    assert '"$OPENBRAIN_BIN" install-hermes --force' in script
+    assert '"$OPENBRAIN_BIN" doctor' in script
 
 
 def test_installer_preserves_isolation_and_supports_forks():

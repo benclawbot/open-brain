@@ -4,8 +4,8 @@ from uuid import uuid4
 
 import pytest
 
-from importers.base import ImportAdapter, ImportCandidate, ImportSource, hash_content
-from importers.runner import run_import
+from src.importers.base import ImportAdapter, ImportCandidate, ImportSource, hash_content
+from src.importers.runner import run_import
 
 
 class StaticAdapter(ImportAdapter):
@@ -36,16 +36,16 @@ def test_import_runner_dry_run_records_preview(monkeypatch):
     updates = []
 
     monkeypatch.setattr(
-        "importers.runner.create_import_run",
+        "src.importers.runner.create_import_run",
         lambda *args, **kwargs: {"id": run_id},
     )
-    monkeypatch.setattr("importers.runner.seen_external_hashes", lambda _: set())
+    monkeypatch.setattr("src.importers.runner.seen_external_hashes", lambda _: set())
     monkeypatch.setattr(
-        "importers.runner.record_import_candidate",
+        "src.importers.runner.record_import_candidate",
         lambda run, candidate, **kwargs: recorded.append((candidate, kwargs)) or True,
     )
     monkeypatch.setattr(
-        "importers.runner.update_import_run",
+        "src.importers.runner.update_import_run",
         lambda run, **kwargs: updates.append(kwargs) or {"id": run},
     )
 
@@ -67,13 +67,13 @@ def test_import_runner_non_dry_run_requires_sealing(monkeypatch):
     run_id = uuid4()
     updates = []
     monkeypatch.setattr(
-        "importers.runner.create_import_run",
+        "src.importers.runner.create_import_run",
         lambda *args, **kwargs: {"id": run_id},
     )
-    monkeypatch.setattr("importers.runner.seen_external_hashes", lambda _: set())
-    monkeypatch.setattr("importers.runner.record_import_candidate", lambda *args, **kwargs: True)
+    monkeypatch.setattr("src.importers.runner.seen_external_hashes", lambda _: set())
+    monkeypatch.setattr("src.importers.runner.record_import_candidate", lambda *args, **kwargs: True)
     monkeypatch.setattr(
-        "importers.runner.update_import_run",
+        "src.importers.runner.update_import_run",
         lambda run, **kwargs: updates.append(kwargs) or {"id": run},
     )
 
@@ -86,7 +86,7 @@ def test_import_runner_non_dry_run_requires_sealing(monkeypatch):
 def test_import_runner_rejects_resume_after_source_change(monkeypatch):
     run_id = uuid4()
     monkeypatch.setattr(
-        "importers.runner.get_import_run",
+        "src.importers.runner.get_import_run",
         lambda _: {
             "id": run_id,
             "status": "running",
@@ -105,7 +105,7 @@ def test_import_runner_rejects_resume_after_source_change(monkeypatch):
 def test_import_runner_rejects_sealed_resume(monkeypatch):
     run_id = uuid4()
     monkeypatch.setattr(
-        "importers.runner.get_import_run",
+        "src.importers.runner.get_import_run",
         lambda _: {"id": run_id, "status": "sealed", "config": {"dry_run": False}},
     )
 
@@ -123,19 +123,19 @@ def test_import_runner_skips_already_recorded_candidate(monkeypatch):
     candidate = list(adapter.discover())[0]
 
     monkeypatch.setattr(
-        "importers.runner.create_import_run",
+        "src.importers.runner.create_import_run",
         lambda *args, **kwargs: {"id": run_id},
     )
     monkeypatch.setattr(
-        "importers.runner.seen_external_hashes",
+        "src.importers.runner.seen_external_hashes",
         lambda _: {(candidate.external_id, candidate.external_hash)},
     )
     monkeypatch.setattr(
-        "importers.runner.record_import_candidate",
+        "src.importers.runner.record_import_candidate",
         lambda *args, **kwargs: pytest.fail("duplicate candidate should not be recorded"),
     )
     monkeypatch.setattr(
-        "importers.runner.update_import_run",
+        "src.importers.runner.update_import_run",
         lambda run, **kwargs: {"id": run},
     )
 

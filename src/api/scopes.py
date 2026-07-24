@@ -5,8 +5,8 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from continuity.scopes import IdentityRecord, IdentityRef, SessionOpen, SessionRecord
-from db.scope_queries import close_session, open_session, resolve_identity
+from ..continuity.scopes import IdentityRecord, IdentityRef, SessionOpen, SessionRecord
+from ..db.scope_queries import close_session, open_session, resolve_identity
 
 router = APIRouter(tags=["scopes"])
 

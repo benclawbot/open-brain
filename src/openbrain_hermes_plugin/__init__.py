@@ -16,23 +16,62 @@ from agent.memory_provider import MemoryProvider
 logger = logging.getLogger(__name__)
 
 
+def _load_openbrain_environment() -> dict[str, str]:
+    """Load the shared installer configuration without adding dependencies."""
+    config_dir = Path(
+        os.environ.get("OPENBRAIN_CONFIG_DIR", Path.home() / ".config" / "openbrain")
+    ).expanduser()
+    values = {
+        "OPENBRAIN_URL": "http://127.0.0.1:8000",
+        "OPENBRAIN_TIMEOUT": "3",
+    }
+    for path in (config_dir / ".env", Path.cwd() / ".env"):
+        if not path.is_file():
+            continue
+        for raw_line in path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            name, value = line.split("=", 1)
+            name = name.removeprefix("export ").strip()
+            if name.startswith("OPENBRAIN_"):
+                values[name] = value.strip().strip("\"'")
+    for name in tuple(values) + (
+        "OPENBRAIN_API_KEY",
+        "OPENBRAIN_PROJECT_ID",
+        "OPENBRAIN_TASK_ID",
+    ):
+        if os.environ.get(name):
+            values[name] = os.environ[name]
+    return values
+
+
 def _digest(*parts: str) -> str:
     payload = "\0".join(parts).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()[:24]
 
 
 class _Client:
-    def __init__(self, base_url: str, timeout: float = 3.0):
+    def __init__(
+        self,
+        base_url: str,
+        timeout: float = 3.0,
+        api_key: str | None = None,
+    ):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.api_key = api_key
 
     def request(self, method: str, path: str, payload: Optional[dict] = None) -> Any:
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
         request = urllib.request.Request(
             f"{self.base_url}{path}",
             data=data,
             method=method,
-            headers={"Content-Type": "application/json"},
+            headers=headers,
         )
         with urllib.request.urlopen(request, timeout=self.timeout) as response:
             body = response.read().decode("utf-8")
@@ -61,17 +100,22 @@ class OpenBrainMemoryProvider(MemoryProvider):
         return "openbrain"
 
     def is_available(self) -> bool:
-        return bool(os.environ.get("OPENBRAIN_URL", "http://127.0.0.1:8000").strip())
+        return bool(_load_openbrain_environment()["OPENBRAIN_URL"].strip())
 
     def initialize(self, session_id: str, **kwargs) -> None:
         self._session_id = session_id
         self._platform = str(kwargs.get("platform") or "cli")
         self._hermes_home = Path(kwargs.get("hermes_home") or Path.home() / ".hermes")
         self._spool = self._hermes_home / "openbrain-spool.jsonl"
-        self._project_id = os.environ.get("OPENBRAIN_PROJECT_ID") or None
-        self._task_id = os.environ.get("OPENBRAIN_TASK_ID") or None
-        timeout = float(os.environ.get("OPENBRAIN_TIMEOUT", "3"))
-        self._client = _Client(os.environ.get("OPENBRAIN_URL", "http://127.0.0.1:8000"), timeout)
+        settings = _load_openbrain_environment()
+        self._project_id = settings.get("OPENBRAIN_PROJECT_ID") or None
+        self._task_id = settings.get("OPENBRAIN_TASK_ID") or None
+        timeout = float(settings.get("OPENBRAIN_TIMEOUT", "3"))
+        self._client = _Client(
+            settings["OPENBRAIN_URL"],
+            timeout,
+            settings.get("OPENBRAIN_API_KEY"),
+        )
 
         user_key = str(kwargs.get("user_id") or kwargs.get("user_id_alt") or "default-user")
         agent_key = str(kwargs.get("agent_identity") or "hermes")

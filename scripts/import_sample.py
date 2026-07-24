@@ -2,17 +2,15 @@
 """
 Sample data import script for Open Brain.
 """
-import uuid
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime, timedelta, timezone
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+from src.db import queries
+from src.embedder import create_embedding
+from src.extractors.entities import extract_entities
+from src.extractors.tagger import auto_tag
 
-from db import queries
-from embedder import create_embedding
-from extractors.entities import extract_entities
-from extractors.tagger import auto_tag
+logger = logging.getLogger(__name__)
 
 
 SAMPLE_MEMORIES = [
@@ -93,11 +91,11 @@ def import_samples():
             embedding = None
             try:
                 embedding = create_embedding(mem['content'])
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Could not create embedding for sample memory: %s", exc)
             
             # Store memory
-            memory_id = queries.insert_memory(
+            queries.insert_memory(
                 source=mem['source'],
                 content=mem['content'],
                 embedding=embedding,
@@ -105,7 +103,7 @@ def import_samples():
                 tags=list(tags.keys()),
                 tag_sources=tags,
                 importance=mem['importance'],
-                original_date=datetime.now() - timedelta(days=i)
+                original_date=datetime.now(timezone.utc) - timedelta(days=i)
             )
             
             print(f"✓ Imported: {mem['content'][:50]}...")

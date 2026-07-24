@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from importers.hermes_context import discover_allowlisted_context
-from importers.hermes_operations import HermesCronImporter, HermesSkillImporter
-from importers.hermes_sessions import HermesSessionImporter
+from src.importers.hermes_context import discover_allowlisted_context
+from src.importers.hermes_operations import HermesCronImporter, HermesSkillImporter
+from src.importers.hermes_sessions import HermesSessionImporter
 
 
 def test_context_import_requires_allowlist_and_blocks_escape(tmp_path):

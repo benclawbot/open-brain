@@ -1,7 +1,7 @@
 """Tests for safe bootstrap import of Hermes markdown memory."""
 
-from importers.base import ImportSource, hash_content
-from importers.hermes_markdown import HermesMarkdownImporter, discover_default_hermes_memory
+from src.importers.base import ImportSource, hash_content
+from src.importers.hermes_markdown import HermesMarkdownImporter, discover_default_hermes_memory
 
 
 def test_importer_preserves_sections_authority_and_hashes(tmp_path):

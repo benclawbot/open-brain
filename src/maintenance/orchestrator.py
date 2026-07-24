@@ -8,18 +8,11 @@ from time import perf_counter
 from typing import Any, Callable
 from uuid import UUID, uuid4
 
-try:
-    from ..context.cache import cleanup_context_cache, context_cache_stats
-    from ..db.compaction_queries import compact_events
-    from ..db.connection import get_db_cursor
-    from ..db.consolidation_queries import generate_consolidation_proposals
-    from ..db.pruning_queries import generate_pruning_proposals
-except ImportError:
-    from context.cache import cleanup_context_cache, context_cache_stats
-    from db.compaction_queries import compact_events
-    from db.connection import get_db_cursor
-    from db.consolidation_queries import generate_consolidation_proposals
-    from db.pruning_queries import generate_pruning_proposals
+from ..context.cache import cleanup_context_cache, context_cache_stats
+from ..db.compaction_queries import compact_events
+from ..db.connection import get_db_cursor
+from ..db.consolidation_queries import generate_consolidation_proposals
+from ..db.pruning_queries import generate_pruning_proposals
 
 
 @dataclass(frozen=True)

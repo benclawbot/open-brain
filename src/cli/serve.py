@@ -13,7 +13,7 @@ def serve_cmd(args: Namespace) -> int:
     port = args.port
     reload = args.reload
     
-    print(f"Starting Open Brain API server...")
+    print("Starting Open Brain API server...")
     print(f"Host: {host}")
     print(f"Port: {port}")
     print(f"API docs: http://{host}:{port}/docs")
@@ -25,7 +25,7 @@ def serve_cmd(args: Namespace) -> int:
         return 1
     
     uvicorn.run(
-        "src.api.main:app",
+        "src.api.main:app" if reload else app,
         host=host,
         port=port,
         reload=reload

@@ -15,7 +15,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from importers.base import ImportAdapter, ImportCandidate, ImportSource, hash_content
+from .base import ImportAdapter, ImportCandidate, ImportSource, hash_content
 
 
 class ProviderCapability(StrEnum):

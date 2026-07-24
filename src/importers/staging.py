@@ -6,7 +6,7 @@ import json
 from typing import Any
 from uuid import UUID
 
-from db.connection import get_db_cursor
+from ..db.connection import get_db_cursor
 
 
 def seal_import_run(run_id: UUID, *, actor: str, expected_records: int | None = None) -> dict[str, Any]:

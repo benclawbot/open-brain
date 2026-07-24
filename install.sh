@@ -30,11 +30,18 @@ else
   "$PIPX_BIN" install "git+$REPO_URL"
 fi
 
-if [ "$HERMES_MODE" = "1" ] || [ "$HERMES_MODE" = "true" ] || { [ "$HERMES_MODE" = "auto" ] && command -v hermes >/dev/null 2>&1; }; then
-  openbrain install-hermes --force
+OPENBRAIN_BIN="$(command -v openbrain || true)"
+if [ -z "$OPENBRAIN_BIN" ]; then
+  OPENBRAIN_BIN="${PIPX_BIN_DIR:-$HOME/.local/bin}/openbrain"
 fi
 
-openbrain doctor
+"$OPENBRAIN_BIN" configure
+
+if [ "$HERMES_MODE" = "1" ] || [ "$HERMES_MODE" = "true" ] || { [ "$HERMES_MODE" = "auto" ] && command -v hermes >/dev/null 2>&1; }; then
+  "$OPENBRAIN_BIN" install-hermes --force
+fi
+
+"$OPENBRAIN_BIN" doctor
 cat <<'EOF'
 Open Brain installed.
 

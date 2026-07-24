@@ -6,6 +6,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.runtime_config import load_runtime_environment, restrict_file_permissions
+
 
 @dataclass(frozen=True)
 class HostAdapterConfig:
@@ -17,6 +19,7 @@ class HostAdapterConfig:
 
     @classmethod
     def from_env(cls) -> "HostAdapterConfig":
+        load_runtime_environment()
         base_url = os.getenv("OPENBRAIN_URL", "http://127.0.0.1:8000").strip().rstrip("/")
         api_key = os.getenv("OPENBRAIN_API_KEY") or None
         try:
@@ -59,7 +62,7 @@ def install_env_file(path: Path, config: HostAdapterConfig, *, overwrite: bool =
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(render_env_file(config), encoding="utf-8")
-    temporary.chmod(0o600)
+    restrict_file_permissions(temporary)
     temporary.replace(path)
     return path
 
