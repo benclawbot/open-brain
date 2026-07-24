@@ -415,8 +415,60 @@ def test_summary():
 # Standalone runner: ``python tests/e2e/test_api.py``. The pytest test
 # functions above are the canonical entry point; this block just chains
 # them so a developer can run the suite without installing pytest.
+#
+# The default rate limit in this stack is 120 req/60s. The suite makes
+# about 40 requests in <10 seconds, so back-to-back runs will trip the
+# limit unless each function is followed by a short sleep. The
+# SLOW_DELAY default of 3 seconds is enough to keep two consecutive
+# runs under the budget. Pass ``--slow 0`` to disable, or ``--slow 5``
+# for a more conservative pace.
+#
+# CLI flags:
+#   --slow    Sleep SLOW_DELAY seconds between test functions. Useful when
+#             running the suite multiple times in succession against a
+#             stack with strict per-IP rate limits (the default 120 req/60s
+#             is easy to hit on a fast machine; the suite makes ~40
+#             requests in <10s, so 3s between functions is enough to stay
+#             under the limit). Pass a number to override the delay:
+#             ``--slow 5`` sleeps 5 seconds between functions. Default: 3.0.
+#   --url URL Override the api base url.
+#   --key KEY Override the api key.
 # ---------------------------------------------------------------------------
+SLOW_DELAY = 0.0
+
+
+def _parse_argv() -> None:
+    global URL, KEY, HDR, SLOW_DELAY
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--slow":
+            # numeric argument optional; default to 3s if just the flag
+            try:
+                SLOW_DELAY = float(args[i + 1]) if i + 1 < len(args) and not args[i + 1].startswith("--") else 3.0
+                i += 1
+            except ValueError:
+                SLOW_DELAY = 3.0
+        elif a == "--url" and i + 1 < len(args):
+            URL = args[i + 1].rstrip("/")
+            HDR = {"X-API-Key": KEY or "", "Content-Type": "application/json"}
+            i += 1
+        elif a == "--key" and i + 1 < len(args):
+            KEY = args[i + 1]
+            HDR = {"X-API-Key": KEY, "Content-Type": "application/json"}
+            i += 1
+        elif a in ("-h", "--help"):
+            print(__doc__)
+            sys.exit(0)
+        else:
+            print(f"unknown arg: {a}", file=sys.stderr)
+            sys.exit(2)
+        i += 1
+
+
 if __name__ == "__main__":
+    _parse_argv()
     failures = 0
     for name, fn in list(globals().items()):
         if name.startswith("test_") and name != "test_summary" and callable(fn):
@@ -428,6 +480,8 @@ if __name__ == "__main__":
             except Exception as e:
                 failures += 1
                 print(f"  [ERROR] {name}: {type(e).__name__}: {e}")
+            if SLOW_DELAY > 0:
+                time.sleep(SLOW_DELAY)
     # Also count step-level failures recorded by req() (the test functions
     # print FAIL but don't always raise). The summary prints both.
     test_summary()
