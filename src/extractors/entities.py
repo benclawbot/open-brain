@@ -13,26 +13,36 @@ from nltk.tree import Tree
 
 # Download required NLTK data
 def _ensure_nltk_data():
-    """Ensure required NLTK data is downloaded."""
-    try:
-        nltk.data.find('tokenizers/punkt')
-    except LookupError:
-        nltk.download('punkt', quiet=True)
-    
-    try:
-        nltk.data.find('taggers/averaged_perceptron_tagger')
-    except LookupError:
-        nltk.download('averaged_perceptron_tagger', quiet=True)
-    
-    try:
-        nltk.data.find('chunkers/maxent_ne_chunker')
-    except LookupError:
-        nltk.download('maxent_ne_chunker', quiet=True)
-    
-    try:
-        nltk.data.find('corpora/words')
-    except LookupError:
-        nltk.download('words', quiet=True)
+    """Ensure required NLTK data is downloaded.
+
+    NLTK 3.8.2+ renamed the core English tokenization, POS tagging, and
+    NE chunking resources: ``punkt`` -> ``punkt_tab``,
+    ``averaged_perceptron_tagger`` -> ``averaged_perceptron_tagger_eng``,
+    ``maxent_ne_chunker`` -> ``maxent_ne_chunker_tab``. The runtime call
+    sites (``word_tokenize``, ``pos_tag``, ``ne_chunk``) require the new
+    names. We look for the new names first and fall back to the old ones
+    so the code works on NLTK versions before and after the rename.
+    """
+    pairs = [
+        ('tokenizers/punkt_tab', 'punkt_tab'),
+        ('tokenizers/punkt', 'punkt'),
+        ('taggers/averaged_perceptron_tagger_eng', 'averaged_perceptron_tagger_eng'),
+        ('taggers/averaged_perceptron_tagger', 'averaged_perceptron_tagger'),
+        ('chunkers/maxent_ne_chunker_tab', 'maxent_ne_chunker_tab'),
+        ('chunkers/maxent_ne_chunker', 'maxent_ne_chunker'),
+        ('corpora/words', 'words'),
+    ]
+    for lookup, pkg in pairs:
+        try:
+            nltk.data.find(lookup)
+        except LookupError:
+            try:
+                nltk.download(pkg, quiet=True)
+            except Exception:
+                # Network or disk failure is non-fatal; the chunker/tokenizer
+                # will raise a clearer error at the call site if the data
+                # is truly missing.
+                pass
 
 
 _ensure_nltk_data()

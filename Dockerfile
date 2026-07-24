@@ -12,6 +12,18 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download NLTK data so entity extraction works on cold starts
+# (NLTK 3.8.2+ renamed punkt -> punkt_tab, averaged_perceptron_tagger ->
+# averaged_perceptron_tagger_eng, maxent_ne_chunker -> maxent_ne_chunker_tab).
+RUN python -m nltk.downloader -d /usr/local/share/nltk_data \
+        punkt_tab \
+        averaged_perceptron_tagger_eng \
+        maxent_ne_chunker_tab \
+        words \
+    && python -c "import nltk; nltk.data.path.insert(0, '/usr/local/share/nltk_data'); \
+        import os; os.environ['NLTK_DATA']='/usr/local/share/nltk_data'; \
+        print('nltk data installed at', nltk.data.path)"
+
 # Copy app
 COPY config/ ./config/
 COPY src/ ./src/
