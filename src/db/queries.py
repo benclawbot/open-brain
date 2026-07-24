@@ -6,8 +6,6 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from psycopg2 import sql
-from psycopg2.extras import RealDictCursor
 
 from .connection import get_db_cursor
 

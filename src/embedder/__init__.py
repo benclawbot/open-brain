@@ -30,7 +30,7 @@ embedder:
 ```
 """
 import os
-from typing import List, Optional
+from typing import ClassVar, List, Optional
 from abc import ABC, abstractmethod
 
 import requests
@@ -133,7 +133,7 @@ class OpenRouterEmbedder(BaseEmbedder):
     """OpenRouter API embedder (default, free tier available)."""
     
     # Default free models on OpenRouter
-    DEFAULT_MODELS = {
+    DEFAULT_MODELS: ClassVar[dict[str, int]] = {
         'text-embedding-3-small': 1536,
         'text-embedding-ada-002': 1536,
     }
@@ -216,7 +216,7 @@ class OpenRouterEmbedder(BaseEmbedder):
 class OpenAIEmbedder(BaseEmbedder):
     """OpenAI API embedder."""
     
-    DEFAULT_MODELS = {
+    DEFAULT_MODELS: ClassVar[dict[str, int]] = {
         'text-embedding-3-small': 1536,
         'text-embedding-3-large': 3072,
         'text-embedding-ada-002': 1536,

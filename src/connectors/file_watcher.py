@@ -2,9 +2,7 @@
 File watcher connector.
 Watches a folder for new Markdown files and imports them.
 """
-import os
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
 

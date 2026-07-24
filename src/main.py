@@ -11,22 +11,18 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-# Add src to path (so `from db import ...` etc. resolve correctly)
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from db import connection
-from db.attribution import insert_memory, search_memories
-from db.queries import (
-    get_memory_by_id,
+from .db import connection
+from .db.attribution import insert_memory, search_memories
+from .db.queries import (
     get_related_memories,
     get_memories_by_entity,
     get_today_memories,
     get_memory_stats,
 )
-from embedder import create_embedding
-from extractors.entities import extract_entities
-from extractors.tagger import auto_tag
-from analytics.weekly_report import generate_weekly_report
+from .embedder import create_embedding
+from .extractors.entities import extract_entities
+from .extractors.tagger import auto_tag
+from .analytics.weekly_report import generate_weekly_report
 
 
 def load_config() -> Dict:

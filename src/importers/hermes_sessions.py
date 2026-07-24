@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Iterable
 
-from importers.base import ImportAdapter, ImportCandidate, ImportSource, hash_content
+from .base import ImportAdapter, ImportCandidate, ImportSource, hash_content
 
 
 class HermesSessionImporter(ImportAdapter):

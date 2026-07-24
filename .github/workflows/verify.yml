@@ -36,6 +36,16 @@ jobs:
           cache: pip
       - name: Install
         run: pip install -e '.[dev]'
+      - name: Validate generated environment and container configuration
+        env:
+          OPENBRAIN_CONFIG_DIR: ${{ runner.temp }}/openbrain-config
+        run: |
+          python -m src.cli configure --project-root .
+          docker compose config --quiet
+      - name: Compile shipped modules
+        run: python -m compileall -q src scripts tests
+      - name: Lint correctness rules
+        run: ruff check src scripts tests --select E9,F401,F541,F63,F7,F82,E722,F841,S110,ASYNC221,PLW1508,PLW1510,RUF012,B017,DTZ001,DTZ005,DTZ007
       - name: Apply migrations
         run: python scripts/migrate.py
       - name: Test

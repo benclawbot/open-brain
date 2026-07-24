@@ -5,10 +5,7 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
-try:
-    from ..maintenance import MaintenanceOptions, run_maintenance
-except ImportError:
-    from maintenance import MaintenanceOptions, run_maintenance
+from ..maintenance import MaintenanceOptions, run_maintenance
 
 
 def maintenance_cmd(args) -> int:

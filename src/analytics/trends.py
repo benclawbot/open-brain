@@ -2,16 +2,9 @@
 Trend detection for Open Brain.
 Analyzes memory patterns over time.
 """
-import sys
-import os
-from collections import Counter
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List
 
-# Add src to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from db import queries
+from ..db import queries
 
 
 class TrendAnalyzer:

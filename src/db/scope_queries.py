@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from uuid import UUID
 
-from continuity.scopes import IdentityRecord, IdentityRef, SessionOpen, SessionRecord
-from db.connection import get_db_cursor
+from ..continuity.scopes import IdentityRecord, IdentityRef, SessionOpen, SessionRecord
+from .connection import get_db_cursor
 
 
 def _json(value):

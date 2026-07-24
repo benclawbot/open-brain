@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from continuity.models import EventCreate, EventRecord, ScopeRef
+from ..continuity.models import EventCreate, EventRecord, ScopeRef
 
 from .connection import get_db_cursor
 

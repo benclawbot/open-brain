@@ -3,7 +3,7 @@ Entity extraction for Open Brain.
 Uses basic NLP for named entity recognition.
 """
 import re
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set
 
 import nltk
 from nltk import pos_tag, word_tokenize

@@ -35,7 +35,7 @@ def import_cmd(args: Namespace) -> int:
             print(f"Unknown source: {source}")
             return 1
         
-        print(f"\nImport complete!")
+        print("\nImport complete!")
         print(f"Imported: {result.get('imported', 0)}")
         print(f"Total processed: {result.get('total_processed', 0)}")
         

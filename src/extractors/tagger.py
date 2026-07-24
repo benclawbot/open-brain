@@ -4,7 +4,7 @@ Uses keyword and pattern-based tagging layers.
 """
 import os
 import re
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 import yaml
 

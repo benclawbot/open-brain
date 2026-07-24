@@ -53,11 +53,11 @@ async def run_command(args):
             print(f"  Error: {result.error}")
     
     if result.stdout:
-        print(f"\n--- stdout ---")
+        print("\n--- stdout ---")
         print(result.stdout[:2000] if len(result.stdout) > 2000 else result.stdout)
     
     if result.stderr:
-        print(f"\n--- stderr ---")
+        print("\n--- stderr ---")
         print(result.stderr[:2000] if len(result.stderr) > 2000 else result.stderr)
     
     return 0 if result.success else 1

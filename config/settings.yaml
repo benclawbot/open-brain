@@ -3,7 +3,6 @@ database:
   port: 5433
   name: openbrain
   user: postgres
-  password: openbrain
   timezone: auto
 
 embedder:
@@ -13,14 +12,14 @@ embedder:
   ollama_base_url: http://localhost:11434
 
 mcp:
-  host: 0.0.0.0
-  port: 8080
+  transport: stdio
 
 api:
-  host: 0.0.0.0
+  host: 127.0.0.1
   port: 8000
   cors_origins:
-    - "*"
+    - http://localhost:8501
+    - http://localhost:8000
 
 dashboard:
   port: 8501

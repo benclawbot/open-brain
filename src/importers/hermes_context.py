@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from importers.base import ImportCandidate, ImportSource, hash_content, stable_file_id
-from importers.hermes_markdown import HermesMarkdownImporter
+from .base import ImportCandidate, ImportSource, hash_content, stable_file_id
+from .hermes_markdown import HermesMarkdownImporter
 
 _ALLOWED_SUFFIXES = {".md", ".markdown", ".txt"}
 

@@ -16,7 +16,7 @@ from typing import Callable
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from db.connection import get_db_cursor
+from ..db.connection import get_db_cursor
 
 logger = logging.getLogger("openbrain.api")
 

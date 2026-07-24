@@ -2,17 +2,18 @@
 Gmail takeout connector.
 Imports emails from Gmail takeout export.
 """
+import binascii
 import json
-import os
-import zipfile
-from datetime import datetime
+import logging
 from pathlib import Path
-from typing import Dict, Generator, List, Optional
+from typing import Dict, List, Optional
 
 from ..db.queries import insert_memory
 from ..embedder import create_embedding
 from ..extractors.entities import extract_entities
 from ..extractors.tagger import auto_tag
+
+logger = logging.getLogger(__name__)
 
 
 class GmailConnector:
@@ -166,8 +167,6 @@ class GmailConnector:
             date_str = msg.get('date', '')
         
         payload = msg.get('payload', {})
-        headers = {h['name']: h['value'] for h in payload.get('headers', [])}
-        
         # Get body
         body = ''
         parts = payload.get('parts', [])
@@ -179,8 +178,8 @@ class GmailConnector:
                     import base64
                     try:
                         body = base64.urlsafe_b64decode(body).decode('utf-8')
-                    except:
-                        pass
+                    except (binascii.Error, UnicodeDecodeError, ValueError) as exc:
+                        logger.warning("Could not decode Gmail message body: %s", exc)
                 break
         
         if not body:

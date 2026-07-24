@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from release.readiness import evaluate_release_readiness
+from src.release.readiness import evaluate_release_readiness
 
 
 def production_env(**overrides: str) -> dict[str, str]:

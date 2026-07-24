@@ -6,18 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-try:
-    from ..db.consolidation_queries import (
-        apply_consolidation_proposal,
-        generate_consolidation_proposals,
-        list_consolidation_proposals,
-        resolve_consolidation_proposal,
-        reverse_consolidation_execution,
-    )
-    from .proposals import ProposalActorRequest, ProposalReviewRequest
-except ImportError:
-    from api.proposals import ProposalActorRequest, ProposalReviewRequest
-    from db.consolidation_queries import (
+from .proposals import ProposalActorRequest, ProposalReviewRequest
+from ..db.consolidation_queries import (
         apply_consolidation_proposal,
         generate_consolidation_proposals,
         list_consolidation_proposals,

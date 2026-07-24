@@ -8,26 +8,15 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-try:
-    from ..db.lifecycle_queries import (
+from .proposals import ProposalActorRequest, ProposalReviewRequest
+from ..db.lifecycle_queries import (
         apply_lifecycle_proposal,
         generate_lifecycle_proposals,
         list_lifecycle_proposals,
         resolve_lifecycle_proposal,
         reverse_lifecycle_execution,
     )
-    from ..lifecycle.execution import LifecycleExecutionError
-    from .proposals import ProposalActorRequest, ProposalReviewRequest
-except ImportError:  # Support legacy execution with src/ directly on sys.path.
-    from api.proposals import ProposalActorRequest, ProposalReviewRequest
-    from db.lifecycle_queries import (
-        apply_lifecycle_proposal,
-        generate_lifecycle_proposals,
-        list_lifecycle_proposals,
-        resolve_lifecycle_proposal,
-        reverse_lifecycle_execution,
-    )
-    from lifecycle.execution import LifecycleExecutionError
+from ..lifecycle.execution import LifecycleExecutionError
 
 router = APIRouter(prefix="/lifecycle", tags=["lifecycle"])
 

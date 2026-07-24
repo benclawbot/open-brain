@@ -1,12 +1,7 @@
 """Tests for exact multi-agent memory attribution."""
-import os
-import sys
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
 
 def _cursor(rows=None, row=None):
     cursor = Mock()
@@ -21,7 +16,7 @@ def _cursor(rows=None, row=None):
 
 
 def test_insert_memory_persists_captured_by():
-    from db import attribution
+    from src.db import attribution
 
     cursor, manager = _cursor()
     with patch.object(attribution, "get_db_cursor", manager):
@@ -37,7 +32,7 @@ def test_insert_memory_persists_captured_by():
 
 
 def test_insert_memory_allows_legacy_null_attribution():
-    from db import attribution
+    from src.db import attribution
 
     cursor, manager = _cursor()
     with patch.object(attribution, "get_db_cursor", manager):
@@ -48,7 +43,7 @@ def test_insert_memory_allows_legacy_null_attribution():
 
 
 def test_semantic_search_filters_by_exact_agent():
-    from db import attribution
+    from src.db import attribution
 
     cursor, manager = _cursor()
     with patch.object(attribution, "get_db_cursor", manager):
@@ -65,7 +60,7 @@ def test_semantic_search_filters_by_exact_agent():
 
 
 def test_text_search_combines_transport_and_agent_filters():
-    from db import attribution
+    from src.db import attribution
 
     cursor, manager = _cursor()
     with patch.object(attribution, "get_db_cursor", manager):
@@ -87,9 +82,9 @@ def test_text_search_combines_transport_and_agent_filters():
 
 
 def test_recent_memories_filter_by_agent_and_decode_rows():
-    from db import attribution
+    from src.db import attribution
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     cursor, manager = _cursor(rows=[{
         "id": "memory-1",
         "source": "mcp",
@@ -119,7 +114,7 @@ def test_recent_memories_filter_by_agent_and_decode_rows():
 
 
 def test_rest_models_expose_agent_attribution():
-    from api.main import MemoryCreate, MemoryResponse, SearchRequest
+    from src.api.main import MemoryCreate, MemoryResponse, SearchRequest
 
     assert "captured_by" in MemoryCreate.model_fields
     assert "captured_by" in MemoryResponse.model_fields
@@ -128,7 +123,7 @@ def test_rest_models_expose_agent_attribution():
 
 def test_mcp_tool_schemas_expose_agent_attribution():
     import asyncio
-    import main
+    from src import main
 
     tools = asyncio.run(main.list_tools())
     schemas = {tool.name: tool.inputSchema for tool in tools}
@@ -137,7 +132,7 @@ def test_mcp_tool_schemas_expose_agent_attribution():
 
 
 def test_mcp_format_includes_attribution_when_present():
-    from main import format_memory_list
+    from src.main import format_memory_list
 
     formatted = format_memory_list([{
         "id": "memory-1",
@@ -145,6 +140,6 @@ def test_mcp_format_includes_attribution_when_present():
         "captured_by": "medusa:session-9",
         "content": "Completed task",
         "tags": [],
-        "created_at": datetime.now(),
+        "created_at": datetime.now(timezone.utc),
     }])
     assert "Captured by: medusa:session-9" in formatted

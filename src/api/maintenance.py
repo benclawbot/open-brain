@@ -5,10 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-try:
-    from ..maintenance import MaintenanceOptions, run_maintenance
-except ImportError:
-    from maintenance import MaintenanceOptions, run_maintenance
+from ..maintenance import MaintenanceOptions, run_maintenance
 
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 

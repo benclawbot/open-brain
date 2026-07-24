@@ -2,16 +2,16 @@
 
 from fastapi import APIRouter, HTTPException, status
 
-from api.compaction import router as compaction_router
-from api.consolidation import router as consolidation_router
-from api.context import router as context_router
-from api.imports import router as imports_router
-from api.lifecycle import router as lifecycle_router
-from api.maintenance import router as maintenance_router
-from api.pruning import router as pruning_router
-from api.scopes import router as scopes_router
-from continuity.models import EventCreate, EventRecord
-from db.continuity_queries import ingest_event
+from .compaction import router as compaction_router
+from .consolidation import router as consolidation_router
+from .context import router as context_router
+from .imports import router as imports_router
+from .lifecycle import router as lifecycle_router
+from .maintenance import router as maintenance_router
+from .pruning import router as pruning_router
+from .scopes import router as scopes_router
+from ..continuity.models import EventCreate, EventRecord
+from ..db.continuity_queries import ingest_event
 
 router = APIRouter(prefix="/v1", tags=["continuity"])
 router.include_router(scopes_router)

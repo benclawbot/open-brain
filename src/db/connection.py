@@ -1,6 +1,7 @@
 """
 Database connection management for Open Brain.
 """
+import logging
 import os
 import pathlib
 from contextlib import contextmanager
@@ -11,6 +12,8 @@ import psycopg2
 from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 
+logger = logging.getLogger(__name__)
+
 
 def _detect_local_timezone() -> str:
     """Detect the system's IANA timezone name; fall back to UTC."""
@@ -19,8 +22,8 @@ def _detect_local_timezone() -> str:
         parts = str(link).split("zoneinfo/")
         if len(parts) > 1:
             return parts[1]
-    except Exception:
-        pass
+    except (OSError, RuntimeError) as exc:
+        logger.debug("Could not detect local timezone: %s", exc)
     return "UTC"
 
 

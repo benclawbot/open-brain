@@ -10,30 +10,32 @@ from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+
+from src.runtime_config import load_runtime_environment
+
+load_runtime_environment()
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-# Add src to path
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from api.continuity import router as continuity_router
-from api.operations import configure_operations, database_readiness
-from db.connection import init_db
-from db.attribution import (
+from .continuity import router as continuity_router
+from .operations import configure_operations, database_readiness
+from ..analytics.trends import TrendAnalyzer
+from ..analytics.weekly_report import generate_weekly_report
+from ..db.connection import init_db
+from ..db.attribution import (
     search_memories,
     get_memory_by_id,
     insert_memory,
     get_recent_memories,
 )
-from db.queries import get_memory_stats
-from embedder import create_embedding
-from extractors.entities import extract_entities
-from extractors.tagger import get_tagger
-from analytics.trends import TrendAnalyzer
-from analytics.weekly_report import generate_weekly_report
+from ..db.queries import get_memory_stats
+from ..embedder import create_embedding
+from ..extractors.entities import extract_entities
+from ..extractors.tagger import get_tagger
+from ..version import get_version
 
 logger = logging.getLogger("openbrain.api")
+VERSION = get_version()
 
 
 @asynccontextmanager
@@ -51,7 +53,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Open Brain API",
     description="REST API for memory management and durable agent continuity",
-    version="0.2.0",
+    version=VERSION,
     lifespan=lifespan,
 )
 configure_operations(app)
@@ -108,7 +110,7 @@ async def root():
     """Root endpoint."""
     return {
         "name": "Open Brain API",
-        "version": "0.2.0",
+        "version": VERSION,
         "docs": "/docs",
     }
 

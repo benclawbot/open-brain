@@ -10,7 +10,7 @@ services:
     environment:
       DB_HOST: postgres
       DB_NAME: openbrain
-      DB_PASSWORD: openbrain
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
       DB_PORT: 5432
       DB_USER: postgres
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
@@ -27,7 +27,7 @@ services:
     environment:
       DB_HOST: postgres
       DB_NAME: openbrain
-      DB_PASSWORD: openbrain
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
       DB_PORT: 5432
       DB_USER: postgres
       STREAMLIT_PORT: 8501
@@ -39,7 +39,7 @@ services:
     container_name: openbrain-postgres
     environment:
       POSTGRES_DB: openbrain
-      POSTGRES_PASSWORD: openbrain
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
       POSTGRES_USER: postgres
     healthcheck:
       interval: 5s
@@ -50,7 +50,7 @@ services:
       timeout: 5s
     image: pgvector/pgvector:pg16
     ports:
-    - 5433:5432
+    - "127.0.0.1:${DB_HOST_PORT:-5433}:5432"
     volumes:
     - postgres_data:/var/lib/postgresql/data
 volumes:

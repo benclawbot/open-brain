@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Iterable
 
-from importers.base import (
+from .base import (
     ImportAdapter,
     ImportCandidate,
     ImportSource,

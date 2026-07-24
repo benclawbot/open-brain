@@ -4,12 +4,10 @@ Handles importing data from various formats.
 """
 import csv
 import json
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict
 
 from ..db import queries
-from ..embedder import create_embeddings
 from ..extractors.entities import extract_entities
 from ..extractors.tagger import auto_tag
 

@@ -6,14 +6,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from db.import_queries import (
+from ..db.import_queries import (
     create_import_run,
     get_import_run,
     record_import_candidate,
     seen_external_hashes,
     update_import_run,
 )
-from importers.base import ImportAdapter
+from .base import ImportAdapter
 
 
 class ImportSummary(BaseModel):

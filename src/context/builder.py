@@ -5,16 +5,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import uuid4
 
-try:
-    from .cache import cache_key, load_cached_packet, store_cached_packet
-    from .models import ContextItem, ContextKind, ContextPacket, ContextRequest, TrustLabel
-    from ..db.compaction_queries import fetch_active_compactions
-    from ..db.context_queries import fetch_structured_context, get_scope_revisions
-except ImportError:
-    from context.cache import cache_key, load_cached_packet, store_cached_packet
-    from context.models import ContextItem, ContextKind, ContextPacket, ContextRequest, TrustLabel
-    from db.compaction_queries import fetch_active_compactions
-    from db.context_queries import fetch_structured_context, get_scope_revisions
+from .cache import cache_key, load_cached_packet, store_cached_packet
+from .models import ContextItem, ContextKind, ContextPacket, ContextRequest, TrustLabel
+from ..db.compaction_queries import fetch_active_compactions
+from ..db.context_queries import fetch_structured_context, get_scope_revisions
 
 _DIVERSITY_ORDER = (
     ContextKind.WARNING, ContextKind.NEXT_ACTION, ContextKind.DECISION,
