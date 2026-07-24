@@ -145,12 +145,17 @@ def test_health_and_root():
 
 def test_memory_crud():
     print("\n=== 2. Memory CRUD ===")
+    # The content is intentionally distinctive (a unique "knockwurst" reference
+    # and a unique timestamp) so this memory's embedding is distinguishable
+    # from historical near-duplicates the api may already hold.
     s, raw = req("POST", "/memories", {
         "content": (
-            "Open Brain end-to-end test stored an Acme Corp hiring record in Paris "
-            "for Ben Clawbot on 2026-08-15. PostgreSQL migration project. "
+            "E2E test beacon written on 2099-12-31 23:59:59 from Mars colony. "
+            "Unique marker: knockwurst-omega-9001. "
+            "The lead PostgreSQL migration architect is now working on the "
+            "Acme-OpenBrain integration in Paris. "
             "Contact ben@acme.example, https://acme.example, phone 555-123-4567. "
-            "#hiring @ben #postgres #paris"
+            "#hiring @ben #postgres #paris #e2e-beacon"
         ),
         "tags": ["test", "hiring", "e2e"],
         "source": "e2e_test",
@@ -172,7 +177,10 @@ def test_memory_crud():
     )
 
     s, raw = req("POST", "/memories/search", {
-        "query": "PostgreSQL migration Paris hiring Acme",
+        # The query is intentionally distinctive ("knockwurst-omega-9001 Mars
+        # colony") so this test's just-created memory is the top hit rather
+        # than any historical near-duplicate.
+        "query": "knockwurst-omega-9001 Mars colony e2e beacon",
         "limit": 10,
     }, expect=(200,))
     hits = json.loads(raw)
