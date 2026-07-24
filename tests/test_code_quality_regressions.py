@@ -221,6 +221,17 @@ def test_runtime_and_hermes_plugin_versions_match_distribution() -> None:
     assert plugin["version"] == project_version()
 
 
+def test_package_cli_module_is_executable() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "src.cli", "--version"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert result.stdout.strip() == f"Open Brain {project_version()}"
+
+
 def test_generated_distribution_metadata_is_not_tracked_as_source() -> None:
     tracked = subprocess.run(
         ["git", "ls-files", "openbrain.egg-info"],
