@@ -458,14 +458,53 @@ def get_embedder(config_path: str = None) -> BaseEmbedder:
     return _embedder
 
 
+EMBEDDING_MAX_CHARS = 4_000
+EMBEDDING_CHUNK_OVERLAP = 500
+
+
+def _chunk_text(text: str, max_chars: int, overlap: int) -> List[str]:
+    """Split text into overlapping chunks."""
+    chunks = []
+    start = 0
+    while start < len(text):
+        chunks.append(text[start:start + max_chars])
+        start += max_chars - overlap
+    return chunks
+
+
+def _mean_pool(embeddings: List[List[float]]) -> List[float]:
+    """Mean-pool embeddings and L2-normalize for cosine similarity consistency."""
+    import math
+
+    dim = len(embeddings[0])
+    mean = [0.0] * dim
+    for emb in embeddings:
+        for i in range(dim):
+            mean[i] += emb[i]
+    norm = 0.0
+    for i in range(dim):
+        mean[i] /= len(embeddings)
+        norm += mean[i] * mean[i]
+    norm = math.sqrt(norm)
+    if norm > 0:
+        for i in range(dim):
+            mean[i] /= norm
+    return mean
+
+
 def create_embedding(text: str) -> List[float]:
-    """Convenience function to create an embedding."""
-    return get_embedder().embed(text)
+    """Create an embedding, automatically chunking long text."""
+    embedder = get_embedder()
+    if len(text) <= EMBEDDING_MAX_CHARS:
+        return embedder.embed(text)
+    chunks = _chunk_text(text, EMBEDDING_MAX_CHARS, EMBEDDING_CHUNK_OVERLAP)
+    embeddings = [embedder.embed(chunk) for chunk in chunks]
+    return _mean_pool(embeddings)
 
 
 def create_embeddings(texts: List[str]) -> List[List[float]]:
-    """Convenience function to create multiple embeddings."""
-    return get_embedder().embed_batch(texts)
+    """Create embeddings for multiple texts, chunking any that exceed the limit."""
+    return [create_embedding(text) for text in texts]
 
 
 # For backward compatibility
