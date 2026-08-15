@@ -12,7 +12,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from .db import connection
-from .db.attribution import insert_memory, search_memories
+from .db.attribution import insert_memory, search_memories, regenerate_embedding, get_memory_by_id
 from .db.queries import (
     get_related_memories,
     get_memories_by_entity,
@@ -139,6 +139,26 @@ async def list_tools() -> List[Tool]:
                 },
             },
         ),
+        Tool(
+            name="memory_regenerate_embedding",
+            description=(
+                "Re-generate the embedding for an existing memory. "
+                "Use when the original embedding failed (NULL) or after "
+                "switching embedding providers/models."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "memory_id": {"type": "string", "description": "UUID of the memory"},
+                    "force": {
+                        "type": "boolean",
+                        "description": "Overwrite an existing embedding (default false)",
+                        "default": False,
+                    },
+                },
+                "required": ["memory_id"],
+            },
+        ),
     ]
 
 
@@ -160,6 +180,8 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent]:
             return await handle_memory_stats(arguments)
         if name == "memory_weekly_report":
             return await handle_weekly_report(arguments)
+        if name == "memory_regenerate_embedding":
+            return await handle_memory_regenerate_embedding(arguments)
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
     except Exception as exc:
         return [TextContent(type="text", text=f"Error: {str(exc)}")]
@@ -274,6 +296,40 @@ async def handle_memory_stats(args: Dict) -> List[TextContent]:
 async def handle_weekly_report(args: Dict) -> List[TextContent]:
     """Handle memory_weekly_report tool."""
     return [TextContent(type="text", text=generate_weekly_report(args.get("days", 7)))]
+
+
+async def handle_memory_regenerate_embedding(args: Dict) -> List[TextContent]:
+    """Handle memory_regenerate_embedding tool."""
+    memory_id = args.get("memory_id", "")
+    force = args.get("force", False)
+
+    import uuid
+    try:
+        parsed_id = uuid.UUID(memory_id)
+    except ValueError:
+        return [TextContent(type="text", text=f"Invalid memory ID: {memory_id}")]
+
+    memory = get_memory_by_id(parsed_id)
+    if not memory:
+        return [TextContent(type="text", text=f"Memory not found: {memory_id}")]
+
+    try:
+        embedding = create_embedding(memory["content"])
+    except Exception as exc:
+        return [TextContent(
+            type="text",
+            text=f"Embedding generation failed: {type(exc).__name__}: {exc}",
+        )]
+
+    try:
+        regenerate_embedding(parsed_id, embedding, force=force)
+    except ValueError as exc:
+        return [TextContent(type="text", text=str(exc))]
+
+    return [TextContent(
+        type="text",
+        text=str({"id": str(parsed_id), "status": "regenerated"}),
+    )]
 
 
 def format_memory_list(memories: List[Dict]) -> str:
