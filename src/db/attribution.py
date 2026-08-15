@@ -164,6 +164,48 @@ def get_memory_by_id(memory_id: uuid.UUID) -> Optional[Dict[str, Any]]:
     return _decode_memory(row) if row else None
 
 
+def regenerate_embedding(
+    memory_id: uuid.UUID,
+    new_embedding: List[float],
+    *,
+    force: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Re-generate the embedding for an existing memory.
+
+    By default only memories with a NULL embedding are updated.  Pass
+    ``force=True`` to overwrite a valid embedding (e.g. after a model or
+    dimension change).
+
+    Returns the updated memory row, or ``None`` when the memory does not
+    exist.  Raises ``ValueError`` when the embedding is already present
+    and *force* is ``False``.
+    """
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            f"SELECT {_MEMORY_COLUMNS}, embedding IS NOT NULL AS has_embedding "
+            "FROM memory WHERE id = %s",
+            (memory_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+
+        if row["has_embedding"] and not force:
+            raise ValueError(
+                "memory already has an embedding; pass force=True to overwrite"
+            )
+
+        cursor.execute(
+            "UPDATE memory SET embedding = %s WHERE id = %s",
+            (new_embedding, memory_id),
+        )
+        cursor.execute(
+            f"SELECT {_MEMORY_COLUMNS} FROM memory WHERE id = %s",
+            (memory_id,),
+        )
+        return _decode_memory(cursor.fetchone())
+
+
 def get_recent_memories(
     limit: int = 50,
     offset: int = 0,

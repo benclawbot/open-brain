@@ -27,6 +27,7 @@ from ..db.attribution import (
     get_memory_by_id,
     insert_memory,
     get_recent_memories,
+    regenerate_embedding,
 )
 from ..db.queries import get_memory_stats
 from ..embedder import create_embedding
@@ -236,6 +237,47 @@ async def search_memories_endpoint(search: SearchRequest):
             result["created_at"] = str(result["created_at"])
 
     return results
+
+
+class RegenerateEmbeddingRequest(BaseModel):
+    force: bool = Field(
+        default=False,
+        description="Overwrite an existing embedding (e.g. after a model change)",
+    )
+
+
+@app.post("/memories/{memory_id}/regenerate-embedding")
+async def regenerate_memory_embedding(memory_id: str, request: RegenerateEmbeddingRequest):
+    """Re-generate the embedding for an existing memory.
+
+    Useful when the original embedding failed at store time (NULL embedding)
+    or after switching embedding providers/models.
+    """
+    import uuid as _uuid
+
+    try:
+        parsed_id = _uuid.UUID(memory_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid UUID: {memory_id}") from exc
+
+    memory = get_memory_by_id(parsed_id)
+    if not memory:
+        raise HTTPException(status_code=404, detail="Memory not found")
+
+    try:
+        embedding = create_embedding(memory["content"])
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Embedding generation failed: {type(exc).__name__}",
+        ) from exc
+
+    try:
+        regenerate_embedding(parsed_id, embedding, force=request.force)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    return {"id": str(parsed_id), "status": "regenerated"}
 
 
 @app.get("/stats")
