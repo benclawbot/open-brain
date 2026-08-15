@@ -61,5 +61,5 @@ include = ["src*", "config*"]
 
 [tool.setuptools.package-data]
 config = ["*.yaml", "*.yml"]
-"src.db" = ["migrations/*.sql"]
+"src.db" = ["schema.sql", "migrations/*.sql"]
 "src.openbrain_hermes_plugin" = ["plugin.yaml", "README.md"]
