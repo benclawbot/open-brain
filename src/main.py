@@ -4,6 +4,7 @@ FastMCP-based MCP server for memory operations.
 """
 import os
 import sys
+import uuid
 from typing import Any, Dict, List
 
 import yaml
@@ -20,6 +21,7 @@ from .db.queries import (
     get_memory_stats,
 )
 from .embedder import create_embedding
+from .embedding_regeneration import regenerate_memory_embedding
 from .extractors.entities import extract_entities
 from .extractors.tagger import auto_tag
 from .analytics.weekly_report import generate_weekly_report
@@ -28,10 +30,9 @@ from .analytics.weekly_report import generate_weekly_report
 def load_config() -> Dict:
     """Load configuration from settings.yaml."""
     config_path = os.path.join(
-        os.path.dirname(__file__),
-        '..', 'config', 'settings.yaml'
+        os.path.dirname(__file__), "..", "config", "settings.yaml"
     )
-    with open(config_path, 'r') as file:
+    with open(config_path, "r") as file:
         return yaml.safe_load(file)
 
 
@@ -87,6 +88,21 @@ async def list_tools() -> List[Tool]:
                     "metadata": {"type": "object", "description": "Additional metadata"},
                 },
                 "required": ["content"],
+            },
+        ),
+        Tool(
+            name="memory_regenerate_embedding",
+            description=(
+                "Regenerate a missing embedding. Set force=true to replace an "
+                "existing embedding after changing provider or model."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "memory_id": {"type": "string", "description": "UUID of the memory"},
+                    "force": {"type": "boolean", "description": "Replace an existing embedding", "default": False},
+                },
+                "required": ["memory_id"],
             },
         ),
         Tool(
@@ -150,6 +166,8 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent]:
             return await handle_memory_search(arguments)
         if name == "memory_store":
             return await handle_memory_store(arguments)
+        if name == "memory_regenerate_embedding":
+            return await handle_memory_regenerate_embedding(arguments)
         if name == "memory_get_related":
             return await handle_memory_get_related(arguments)
         if name == "memory_get_entity":
@@ -166,7 +184,6 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent]:
 
 
 async def handle_memory_search(args: Dict) -> List[TextContent]:
-    """Handle memory_search tool."""
     query = args.get("query", "")
     limit = args.get("limit", 5)
     sources = args.get("sources")
@@ -196,7 +213,6 @@ async def handle_memory_search(args: Dict) -> List[TextContent]:
 
 
 async def handle_memory_store(args: Dict) -> List[TextContent]:
-    """Handle memory_store tool."""
     content = args["content"]
     source = args.get("source", "mcp")
     captured_by = args.get("captured_by")
@@ -236,12 +252,23 @@ async def handle_memory_store(args: Dict) -> List[TextContent]:
     )]
 
 
+async def handle_memory_regenerate_embedding(args: Dict) -> List[TextContent]:
+    memory_id = args["memory_id"]
+    try:
+        parsed_id = uuid.UUID(memory_id)
+    except ValueError:
+        return [TextContent(type="text", text=f"Invalid memory ID: {memory_id}")]
+
+    try:
+        result = regenerate_memory_embedding(parsed_id, force=args.get("force", False))
+    except KeyError:
+        return [TextContent(type="text", text=f"Memory not found: {memory_id}")]
+    return [TextContent(type="text", text=str(result))]
+
+
 async def handle_memory_get_related(args: Dict) -> List[TextContent]:
-    """Handle memory_get_related tool."""
     memory_id = args["memory_id"]
     limit = args.get("limit", 5)
-
-    import uuid
     try:
         parsed_id = uuid.UUID(memory_id)
     except ValueError:
@@ -251,7 +278,6 @@ async def handle_memory_get_related(args: Dict) -> List[TextContent]:
 
 
 async def handle_memory_get_entity(args: Dict) -> List[TextContent]:
-    """Handle memory_get_entity tool."""
     results = get_memories_by_entity(
         args["entity_type"],
         args["entity_name"],
@@ -261,23 +287,19 @@ async def handle_memory_get_entity(args: Dict) -> List[TextContent]:
 
 
 async def handle_memory_today(args: Dict) -> List[TextContent]:
-    """Handle memory_today tool."""
     results = get_today_memories(args.get("limit", 10))
     return [TextContent(type="text", text=format_memory_list(results))]
 
 
 async def handle_memory_stats(args: Dict) -> List[TextContent]:
-    """Handle memory_stats tool."""
     return [TextContent(type="text", text=str(get_memory_stats()))]
 
 
 async def handle_weekly_report(args: Dict) -> List[TextContent]:
-    """Handle memory_weekly_report tool."""
     return [TextContent(type="text", text=generate_weekly_report(args.get("days", 7)))]
 
 
 def format_memory_list(memories: List[Dict]) -> str:
-    """Format a list of memories for display."""
     if not memories:
         return "No memories found."
 
@@ -295,7 +317,6 @@ def format_memory_list(memories: List[Dict]) -> str:
 
 
 async def main():
-    """Main entry point."""
     init_server()
     async with stdio_server() as (read_stream, write_stream):
         await app.run(
