@@ -4,7 +4,6 @@ FastAPI server for memory and continuity operations.
 """
 import logging
 import os
-import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
@@ -113,17 +112,24 @@ class EmbeddingRegenerationRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"name": "Open Brain API", "version": VERSION, "docs": "/docs"}
+    """Root endpoint."""
+    return {
+        "name": "Open Brain API",
+        "version": VERSION,
+        "docs": "/docs",
+    }
 
 
 @app.get("/health")
 @app.get("/health/live")
 async def health():
+    """Liveness probe: the process and event loop are responsive."""
     return {"status": "healthy"}
 
 
 @app.get("/health/ready")
 async def readiness():
+    """Readiness probe: startup and database dependencies are available."""
     startup_error = getattr(app.state, "startup_error", None)
     if startup_error:
         return JSONResponse(
@@ -146,11 +152,13 @@ async def get_memories(
     source: Optional[str] = None,
     captured_by: Optional[str] = None,
 ):
+    """Get memories with optional transport and authoring-agent filters."""
     return get_recent_memories(limit, offset, source, captured_by)
 
 
 @app.post("/memories", response_model=dict)
 async def create_memory(memory: MemoryCreate):
+    """Create a new memory."""
     content = memory.content
     source = memory.source
     captured_by = memory.captured_by
@@ -159,6 +167,7 @@ async def create_memory(memory: MemoryCreate):
     metadata = memory.metadata
 
     entities = extract_entities(content)
+
     tagger = get_tagger()
     tag_sources = tagger.tag(content, entities, source, user_tags)
     tags = list(tag_sources.keys())
@@ -191,13 +200,18 @@ async def create_memory(memory: MemoryCreate):
 
 @app.get("/memories/{memory_id}", response_model=MemoryResponse)
 async def get_memory(memory_id: str):
+    """Get a specific memory by ID."""
+    import uuid
+
     try:
         parsed_id = uuid.UUID(memory_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid UUID: {memory_id}") from exc
     memory = get_memory_by_id(parsed_id)
+
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
+
     return memory
 
 
@@ -207,6 +221,8 @@ async def regenerate_embedding_endpoint(
     request: EmbeddingRegenerationRequest,
 ):
     """Regenerate a failed embedding or force replacement during model migration."""
+    import uuid
+
     try:
         parsed_id = uuid.UUID(memory_id)
     except ValueError as exc:
@@ -226,6 +242,7 @@ async def regenerate_embedding_endpoint(
 
 @app.post("/memories/search", response_model=List[MemoryResponse])
 async def search_memories_endpoint(search: SearchRequest):
+    """Search memories by semantic content and structured filters."""
     embedding = None
     if search.query:
         try:
@@ -253,15 +270,18 @@ async def search_memories_endpoint(search: SearchRequest):
 
 @app.get("/stats")
 async def get_stats():
+    """Get memory statistics."""
     return get_memory_stats()
 
 
 @app.get("/trends")
 async def get_trends(weeks: int = Query(4, ge=1, le=12)):
+    """Get trending topics."""
     analyzer = TrendAnalyzer()
     return {"trends": analyzer.get_top_trending(weeks)}
 
 
 @app.get("/report/weekly")
 async def get_weekly_report(days: int = Query(7, ge=1, le=30)):
+    """Generate weekly report."""
     return {"report": generate_weekly_report(days)}
