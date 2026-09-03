@@ -164,6 +164,42 @@ def get_memory_by_id(memory_id: uuid.UUID) -> Optional[Dict[str, Any]]:
     return _decode_memory(row) if row else None
 
 
+def get_memory_embedding_target(memory_id: uuid.UUID) -> Optional[Dict[str, Any]]:
+    """Return content and whether a memory already has an embedding."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT content, embedding IS NOT NULL AS has_embedding
+            FROM memory
+            WHERE id = %s
+            """,
+            (memory_id,),
+        )
+        row = cursor.fetchone()
+    return dict(row) if row else None
+
+
+def update_memory_embedding(
+    memory_id: uuid.UUID,
+    embedding: List[float],
+    *,
+    force: bool = False,
+) -> bool:
+    """Set a memory embedding, overwriting an existing vector only when forced."""
+    with get_db_cursor() as cursor:
+        cursor.execute(
+            """
+            UPDATE memory
+            SET embedding = %s
+            WHERE id = %s
+              AND (%s OR embedding IS NULL)
+            RETURNING id
+            """,
+            (embedding, memory_id, force),
+        )
+        return cursor.fetchone() is not None
+
+
 def get_recent_memories(
     limit: int = 50,
     offset: int = 0,
