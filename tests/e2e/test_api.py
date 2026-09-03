@@ -257,7 +257,7 @@ def test_continuity():
     s, _ = req("POST", f"/v1/sessions/{S.session_id}/close", {
         "summary": "E2E test session — verified identity resolution, event recording, and continuity.",
     }, expect=(200, 201, 204))
-    assert s in (200, 201, 204), f"session close failed"
+    assert s in (200, 201, 204), "session close failed"
 
 
 def test_context():
@@ -336,7 +336,7 @@ def _copy_markdown_to_container(container_md: str) -> None:
     )
     result = subprocess.run(
         ["docker", "cp", str(host_md), f"openbrain-api:{container_md}"],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True, text=True, timeout=30, check=False,
     )
     if result.returncode != 0:
         raise FileNotFoundError(
