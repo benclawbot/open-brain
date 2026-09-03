@@ -42,7 +42,7 @@ def _ensure_nltk_data():
                 # Network or disk failure is non-fatal; the chunker/tokenizer
                 # will raise a clearer error at the call site if the data
                 # is truly missing.
-                pass
+                continue
 
 
 _ensure_nltk_data()
