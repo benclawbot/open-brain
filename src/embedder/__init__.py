@@ -29,12 +29,17 @@ embedder:
   dimensions: 768
 ```
 """
+import math
 import os
 from typing import ClassVar, List, Optional
 from abc import ABC, abstractmethod
 
 import requests
 import yaml
+
+
+DEFAULT_MAX_CHARS = 4000
+DEFAULT_CHUNK_OVERLAP = 200
 
 
 class EmbedderConfig:
@@ -63,6 +68,20 @@ class EmbedderConfig:
         
         # Dimensions
         self.dimensions = embedder_cfg.get('dimensions', 768)
+
+        # Chunking guardrail for providers with smaller context windows
+        self.max_chars = int(os.environ.get(
+            'EMBEDDING_MAX_CHARS',
+            embedder_cfg.get('max_chars', DEFAULT_MAX_CHARS)
+        ))
+        self.chunk_overlap = int(os.environ.get(
+            'EMBEDDING_CHUNK_OVERLAP',
+            embedder_cfg.get('chunk_overlap', DEFAULT_CHUNK_OVERLAP)
+        ))
+        if self.max_chars <= 0:
+            raise ValueError("embedder.max_chars must be greater than zero")
+        if self.chunk_overlap < 0 or self.chunk_overlap >= self.max_chars:
+            raise ValueError("embedder.chunk_overlap must be >= 0 and < max_chars")
         
         # OpenRouter (default)
         self.openrouter_api_key = os.environ.get(
@@ -458,14 +477,63 @@ def get_embedder(config_path: str = None) -> BaseEmbedder:
     return _embedder
 
 
+def _chunk_text(text: str, max_chars: int, overlap: int) -> List[str]:
+    """Split text into bounded overlapping chunks."""
+    if len(text) <= max_chars:
+        return [text]
+
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = min(start + max_chars, len(text))
+        chunks.append(text[start:end])
+        if end == len(text):
+            break
+        start = end - overlap
+    return chunks
+
+
+def _pool_embeddings(embeddings: List[List[float]]) -> List[float]:
+    """Mean-pool chunk vectors and L2-normalize the result."""
+    if not embeddings or not embeddings[0]:
+        raise ValueError("embedding provider returned an empty vector")
+
+    dimensions = len(embeddings[0])
+    if any(len(embedding) != dimensions for embedding in embeddings):
+        raise ValueError("embedding provider returned inconsistent dimensions")
+
+    pooled = [
+        sum(embedding[index] for embedding in embeddings) / len(embeddings)
+        for index in range(dimensions)
+    ]
+    norm = math.sqrt(sum(value * value for value in pooled))
+    if norm == 0:
+        raise ValueError("embedding provider returned only zero vectors")
+    return [value / norm for value in pooled]
+
+
 def create_embedding(text: str) -> List[float]:
-    """Convenience function to create an embedding."""
-    return get_embedder().embed(text)
+    """Convenience function to create an embedding with long-input chunking."""
+    embedder = get_embedder()
+    config = getattr(embedder, 'config', None)
+    if config is None:
+        config = EmbedderConfig.get_instance()
+    max_chars = getattr(config, 'max_chars', DEFAULT_MAX_CHARS)
+    overlap = getattr(config, 'chunk_overlap', DEFAULT_CHUNK_OVERLAP)
+    chunks = _chunk_text(text, max_chars, overlap)
+
+    if len(chunks) == 1:
+        return embedder.embed(chunks[0])
+
+    # Embed chunks individually so provider failures are never hidden by a
+    # provider-specific batch fallback (notably Ollama's zero-vector fallback).
+    embeddings = [embedder.embed(chunk) for chunk in chunks]
+    return _pool_embeddings(embeddings)
 
 
 def create_embeddings(texts: List[str]) -> List[List[float]]:
     """Convenience function to create multiple embeddings."""
-    return get_embedder().embed_batch(texts)
+    return [create_embedding(text) for text in texts]
 
 
 # For backward compatibility

@@ -30,6 +30,7 @@ from ..db.attribution import (
 )
 from ..db.queries import get_memory_stats
 from ..embedder import create_embedding
+from ..embedding_regeneration import regenerate_memory_embedding
 from ..extractors.entities import extract_entities
 from ..extractors.tagger import get_tagger
 from ..version import get_version
@@ -103,6 +104,10 @@ class SearchRequest(BaseModel):
     sources: Optional[List[str]] = None
     tags: Optional[List[str]] = None
     captured_by: Optional[List[str]] = None
+
+
+class EmbeddingRegenerationRequest(BaseModel):
+    force: bool = False
 
 
 @app.get("/")
@@ -208,6 +213,31 @@ async def get_memory(memory_id: str):
         raise HTTPException(status_code=404, detail="Memory not found")
 
     return memory
+
+
+@app.post("/memories/{memory_id}/regenerate-embedding", response_model=dict)
+async def regenerate_embedding_endpoint(
+    memory_id: str,
+    request: EmbeddingRegenerationRequest,
+):
+    """Regenerate a failed embedding or force replacement during model migration."""
+    import uuid
+
+    try:
+        parsed_id = uuid.UUID(memory_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid UUID: {memory_id}") from exc
+
+    try:
+        return regenerate_memory_embedding(parsed_id, force=request.force)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Memory not found") from exc
+    except Exception as exc:
+        logger.warning("embedding regeneration failed: %s", type(exc).__name__)
+        raise HTTPException(
+            status_code=503,
+            detail="Embedding provider unavailable",
+        ) from exc
 
 
 @app.post("/memories/search", response_model=List[MemoryResponse])

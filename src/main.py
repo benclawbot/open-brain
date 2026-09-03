@@ -20,6 +20,7 @@ from .db.queries import (
     get_memory_stats,
 )
 from .embedder import create_embedding
+from .embedding_regeneration import regenerate_memory_embedding
 from .extractors.entities import extract_entities
 from .extractors.tagger import auto_tag
 from .analytics.weekly_report import generate_weekly_report
@@ -90,6 +91,21 @@ async def list_tools() -> List[Tool]:
             },
         ),
         Tool(
+            name="memory_regenerate_embedding",
+            description=(
+                "Regenerate a missing embedding. Set force=true to replace an "
+                "existing embedding after changing provider or model."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "memory_id": {"type": "string", "description": "UUID of the memory"},
+                    "force": {"type": "boolean", "description": "Replace an existing embedding", "default": False},
+                },
+                "required": ["memory_id"],
+            },
+        ),
+        Tool(
             name="memory_get_related",
             description="Get memories related to a specific memory by ID.",
             inputSchema={
@@ -150,6 +166,8 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent]:
             return await handle_memory_search(arguments)
         if name == "memory_store":
             return await handle_memory_store(arguments)
+        if name == "memory_regenerate_embedding":
+            return await handle_memory_regenerate_embedding(arguments)
         if name == "memory_get_related":
             return await handle_memory_get_related(arguments)
         if name == "memory_get_entity":
@@ -234,6 +252,23 @@ async def handle_memory_store(args: Dict) -> List[TextContent]:
             "captured_by": captured_by,
         }),
     )]
+
+
+async def handle_memory_regenerate_embedding(args: Dict) -> List[TextContent]:
+    """Handle memory_regenerate_embedding tool."""
+    import uuid
+
+    memory_id = args["memory_id"]
+    try:
+        parsed_id = uuid.UUID(memory_id)
+    except ValueError:
+        return [TextContent(type="text", text=f"Invalid memory ID: {memory_id}")]
+
+    try:
+        result = regenerate_memory_embedding(parsed_id, force=args.get("force", False))
+    except KeyError:
+        return [TextContent(type="text", text=f"Memory not found: {memory_id}")]
+    return [TextContent(type="text", text=str(result))]
 
 
 async def handle_memory_get_related(args: Dict) -> List[TextContent]:

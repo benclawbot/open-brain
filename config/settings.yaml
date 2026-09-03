@@ -9,6 +9,8 @@ embedder:
   provider: ollama
   model: nomic-embed-text
   dimensions: 768
+  max_chars: 4000
+  chunk_overlap: 200
   ollama_base_url: http://ollama:11434
 
 mcp:
