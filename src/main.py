@@ -4,7 +4,6 @@ FastMCP-based MCP server for memory operations.
 """
 import os
 import sys
-import uuid
 from typing import Any, Dict, List
 
 import yaml
@@ -30,9 +29,10 @@ from .analytics.weekly_report import generate_weekly_report
 def load_config() -> Dict:
     """Load configuration from settings.yaml."""
     config_path = os.path.join(
-        os.path.dirname(__file__), "..", "config", "settings.yaml"
+        os.path.dirname(__file__),
+        '..', 'config', 'settings.yaml'
     )
-    with open(config_path, "r") as file:
+    with open(config_path, 'r') as file:
         return yaml.safe_load(file)
 
 
@@ -184,6 +184,7 @@ async def call_tool(name: str, arguments: Any) -> List[TextContent]:
 
 
 async def handle_memory_search(args: Dict) -> List[TextContent]:
+    """Handle memory_search tool."""
     query = args.get("query", "")
     limit = args.get("limit", 5)
     sources = args.get("sources")
@@ -213,6 +214,7 @@ async def handle_memory_search(args: Dict) -> List[TextContent]:
 
 
 async def handle_memory_store(args: Dict) -> List[TextContent]:
+    """Handle memory_store tool."""
     content = args["content"]
     source = args.get("source", "mcp")
     captured_by = args.get("captured_by")
@@ -253,6 +255,9 @@ async def handle_memory_store(args: Dict) -> List[TextContent]:
 
 
 async def handle_memory_regenerate_embedding(args: Dict) -> List[TextContent]:
+    """Handle memory_regenerate_embedding tool."""
+    import uuid
+
     memory_id = args["memory_id"]
     try:
         parsed_id = uuid.UUID(memory_id)
@@ -267,8 +272,11 @@ async def handle_memory_regenerate_embedding(args: Dict) -> List[TextContent]:
 
 
 async def handle_memory_get_related(args: Dict) -> List[TextContent]:
+    """Handle memory_get_related tool."""
     memory_id = args["memory_id"]
     limit = args.get("limit", 5)
+
+    import uuid
     try:
         parsed_id = uuid.UUID(memory_id)
     except ValueError:
@@ -278,6 +286,7 @@ async def handle_memory_get_related(args: Dict) -> List[TextContent]:
 
 
 async def handle_memory_get_entity(args: Dict) -> List[TextContent]:
+    """Handle memory_get_entity tool."""
     results = get_memories_by_entity(
         args["entity_type"],
         args["entity_name"],
@@ -287,19 +296,23 @@ async def handle_memory_get_entity(args: Dict) -> List[TextContent]:
 
 
 async def handle_memory_today(args: Dict) -> List[TextContent]:
+    """Handle memory_today tool."""
     results = get_today_memories(args.get("limit", 10))
     return [TextContent(type="text", text=format_memory_list(results))]
 
 
 async def handle_memory_stats(args: Dict) -> List[TextContent]:
+    """Handle memory_stats tool."""
     return [TextContent(type="text", text=str(get_memory_stats()))]
 
 
 async def handle_weekly_report(args: Dict) -> List[TextContent]:
+    """Handle memory_weekly_report tool."""
     return [TextContent(type="text", text=generate_weekly_report(args.get("days", 7)))]
 
 
 def format_memory_list(memories: List[Dict]) -> str:
+    """Format a list of memories for display."""
     if not memories:
         return "No memories found."
 
@@ -317,6 +330,7 @@ def format_memory_list(memories: List[Dict]) -> str:
 
 
 async def main():
+    """Main entry point."""
     init_server()
     async with stdio_server() as (read_stream, write_stream):
         await app.run(
