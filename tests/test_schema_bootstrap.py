@@ -2,11 +2,15 @@ from importlib.resources import files
 
 
 def test_base_schema_is_packaged_as_first_migration() -> None:
-    migration = files("src.db.migrations").joinpath("001_base_schema.sql")
-    sql = migration.read_text(encoding="utf-8")
+    migration_root = files("src.db.migrations")
+    base_sql = migration_root.joinpath("001_base_schema.sql").read_text(encoding="utf-8")
+    attribution_sql = migration_root.joinpath("014_agent_attribution.sql").read_text(encoding="utf-8")
 
-    assert "CREATE TABLE IF NOT EXISTS memory" in sql
-    assert "CREATE EXTENSION IF NOT EXISTS \"vector\"" in sql
+    assert "CREATE TABLE IF NOT EXISTS memory" in base_sql
+    assert "CREATE EXTENSION IF NOT EXISTS \"vector\"" in base_sql
+    assert "idx_memory_captured_by" not in base_sql
+    assert "ADD COLUMN IF NOT EXISTS captured_by" in attribution_sql
+    assert "idx_memory_captured_by" in attribution_sql
 
 
 def test_migrate_command_applies_packaged_migrations(monkeypatch, capsys) -> None:
