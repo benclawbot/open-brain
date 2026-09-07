@@ -16,6 +16,11 @@ import urllib.request
 
 import pytest
 
+# test_api.py distinguishes pytest from direct script execution using this
+# environment marker. Pytest normally sets it only while running a test, which
+# is too late for module collection; set a harmless collection value here.
+os.environ.setdefault("PYTEST_CURRENT_TEST", "collection")
+
 
 def _api_url() -> str:
     return os.environ.get("OPENBRAIN_E2E_URL", "http://127.0.0.1:8765").rstrip("/")

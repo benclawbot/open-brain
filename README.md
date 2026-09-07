@@ -8,7 +8,7 @@
 
 [![Verify](https://github.com/benclawbot/open-brain/actions/workflows/verify.yml/badge.svg)](https://github.com/benclawbot/open-brain/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/license/mit)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.2-blue)](CHANGELOG.md)
 
 ## Overview
 
@@ -124,6 +124,14 @@ curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/instal
 
 The installer uses `pipx`, keeping Open Brain isolated from system Python packages. It generates a private OpenBrain API key once in `~/.config/openbrain/.env`; upgrades reuse that key. This path is intended for users who already have a Postgres+pgvector instance elsewhere — the docker stack on this repo is the supported local-stack path.
 
+Point `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` at that database, then initialize it directly from the installed package:
+
+```bash
+openbrain migrate
+```
+
+The packaged migration chain starts at `001_base_schema.sql`, so a clean pipx install can create the core schema without cloning the repository or manually downloading `src/db/schema.sql`.
+
 Verify:
 
 ```bash
@@ -213,6 +221,7 @@ openbrain stats
 openbrain import file ./notes.md
 openbrain report --days 7
 openbrain serve --host 127.0.0.1 --port 8000
+openbrain migrate
 openbrain install-hermes
 openbrain update
 ```
@@ -345,7 +354,7 @@ src/
 
 ## Release status
 
-**Open Brain 1.0.0 is the first production/stable release.** The coordinated production-readiness train delivered deployment hardening, database resilience, real adapter host wiring, durable reconciliation, staged imports, unified proposal review workflows, and a machine-readable release gate.
+**Open Brain 1.0.2 is the current production/stable release.** This patch includes embedding resilience and recovery, MCP SDK compatibility, packaged database bootstrap for pip/pipx installs, and release automation that publishes verified wheel and source-distribution artifacts.
 
 Production readiness still depends on the target environment. Operators must run the readiness gate and verify external controls such as TLS, backups, restore drills, and monitoring before serving real data.
 

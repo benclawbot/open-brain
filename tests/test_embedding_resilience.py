@@ -161,7 +161,7 @@ def test_rest_and_mcp_expose_regeneration_controls():
 
     assert EmbeddingRegenerationRequest(force=True).force is True
     assert any(
-        route.path == "/memories/{memory_id}/regenerate-embedding"
+        getattr(route, "path", None) == "/memories/{memory_id}/regenerate-embedding"
         for route in app.routes
     )
 
