@@ -24,12 +24,13 @@ CREATE TABLE IF NOT EXISTS memory (
     metadata JSONB DEFAULT '{}'
 );
 
--- Indexes for performance
+-- Indexes for columns present in the original base schema. The captured_by
+-- index is intentionally left to 014_agent_attribution.sql so an older
+-- existing memory table can reach the migration that adds captured_by first.
 CREATE INDEX IF NOT EXISTS idx_memory_embedding ON memory USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_memory_entities ON memory USING gin (entities);
 CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory USING gin (tags);
 CREATE INDEX IF NOT EXISTS idx_memory_source ON memory (source);
-CREATE INDEX IF NOT EXISTS idx_memory_captured_by ON memory (captured_by);
 CREATE INDEX IF NOT EXISTS idx_memory_created ON memory (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_memory_original_date ON memory (original_date DESC);
 
