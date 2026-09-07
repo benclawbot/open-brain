@@ -23,6 +23,21 @@ def _run(command: list[str]) -> None:
     subprocess.run(command, check=True)
 
 
+def migrate_cmd() -> int:
+    """Apply packaged database migrations, including the base schema."""
+    try:
+        from src.db.migrate import apply_migrations
+        applied = apply_migrations()
+    except Exception as exc:
+        print(f"Database migration failed: {exc}", file=sys.stderr)
+        return 1
+    if applied:
+        print("Applied migrations: " + ", ".join(applied))
+    else:
+        print("Database schema is up to date.")
+    return 0
+
+
 def update_cmd(skip_migrations: bool = False) -> int:
     """Upgrade a pipx-managed installation and apply additive migrations."""
     try:
@@ -106,6 +121,8 @@ def main() -> int:
     serve_parser.add_argument("--port", "-p", type=int, default=8000)
     serve_parser.add_argument("--reload", action="store_true")
 
+    subparsers.add_parser("migrate", help="Create or update the database schema")
+
     update_parser = subparsers.add_parser("update", help="Upgrade Open Brain and apply additive migrations")
     update_parser.add_argument("--skip-migrations", action="store_true")
 
@@ -157,6 +174,8 @@ def main() -> int:
         if args.command == "serve":
             from .serve import serve_cmd
             return serve_cmd(args)
+        if args.command == "migrate":
+            return migrate_cmd()
         if args.command == "update":
             return update_cmd(skip_migrations=args.skip_migrations)
         if args.command == "configure":
