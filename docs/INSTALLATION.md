@@ -10,6 +10,14 @@ The installer verifies Python 3.11+, installs or upgrades Open Brain through `pi
 
 Set `OPENBRAIN_INSTALL_HERMES=0` to skip automatic Hermes wiring. Set `OPENBRAIN_REPO_URL` to install from a fork.
 
+For a standalone CLI install backed by an existing PostgreSQL + pgvector server, configure the database connection through `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD`, then bootstrap the schema from the installed package:
+
+```sh
+openbrain migrate
+```
+
+The migration chain now begins with `001_base_schema.sql`, so an empty database can be initialized without cloning the repository or locating `src/db/schema.sql` manually. The command is idempotent and uses the same checksum-protected migration ledger as `openbrain update`.
+
 ## Hermes
 
 Automatic installation copies the packaged provider into `${HERMES_HOME:-~/.hermes}/plugins/openbrain`. Manual repair is available with:
@@ -38,7 +46,7 @@ openbrain version-check
 openbrain update
 ```
 
-`version-check` is offline-safe. `update` upgrades the pipx installation and applies additive migrations. When package upgrade succeeds but migration fails, it exits non-zero and reports that existing data was not deleted.
+`version-check` is offline-safe. `update` upgrades the pipx installation and applies additive migrations. When package upgrade succeeds but migration fails, it exits non-zero and reports that existing data was not deleted. You can also run `openbrain migrate` directly whenever you need to initialize or reconcile the database schema without upgrading the package.
 
 ## Diagnostics
 
