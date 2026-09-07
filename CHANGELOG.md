@@ -4,21 +4,38 @@ All notable changes to Open Brain are documented in this file. The project follo
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-09-07
+
+### Fixed
+- Capped the MCP Python SDK dependency to `mcp>=1.0.0,<2.0.0`, preventing fresh installs from resolving the incompatible 2.x API while Open Brain still uses the 1.x server decorators.
+- Added bounded chunking, pooling, and validation for oversized embedding inputs so provider context limits no longer make memory storage fail outright.
+- Added shared embedding regeneration for REST and MCP, with safe NULL-only replacement by default and an explicit force mode for embedding-model migrations.
+- Made migration `015_embedding_dim_change.sql` safe on databases where the legacy `memory` table is not present yet.
+- Added `001_base_schema.sql` to the packaged migration chain so an empty PostgreSQL + pgvector database can be initialized from a pip/pipx install.
+- Added `openbrain migrate` as the supported installed-package database bootstrap/update command.
+- Fixed e2e pytest collection so the standalone API runner skips cleanly when the API stack is unavailable instead of aborting the full test suite during module import.
+
 ### Changed
-- Default docker-compose stack now ships an `ollama` service running the `nomic-embed-text` model (768-dim). The api no longer requires an external embeddings API key for a working local stack.
-- Default API host port changed from `8000` to `8765`. Port 8000 is held by the Windows IP Helper service (`iphlpsvc`) on many Windows hosts, which prevents the api container from binding. Override with `API_PORT` in `.env`.
-- `scripts/setup_db.py` now honours `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER` environment variables, matching the pattern used by `check_db.py`. The api container's compose-injected values (e.g. `postgres:5432`) now apply correctly on first run.
-- `scripts/startup.sh` now invokes `scripts/migrate.py` after `setup_db.py`. The README always claimed the API applied migrations on startup; the code now matches the documentation.
-- `src/db/connection.py` registers `psycopg2.extras.UUID_adapter` at import time. Queries that bind `uuid.UUID` parameters (`get_memory_by_id`, etc.) no longer raise `ProgrammingError: can't adapt type 'UUID'`.
+- Documented the standalone PostgreSQL + pgvector bootstrap flow in the README and installation guide.
+- Aligned package and Hermes plugin release metadata on version `1.0.2`.
+- Added release automation that publishes a tagged GitHub release with wheel and source-distribution artifacts only after `Verify` succeeds on `master`.
+
+## [1.0.1] - 2026-07-24
+
+### Fixed
+- Made the local Docker stack work from a fresh clone by enforcing LF shell-script line endings, honoring database environment variables, running migrations during API startup, and registering psycopg2 UUID adaptation.
+- Updated NLTK resource handling for the 3.8.2+ resource-name changes and baked the required data into the API image.
+
+### Changed
+- Switched the default local embedding service to Ollama with `nomic-embed-text` (768 dimensions), removing the need for an external embeddings API key for the default stack.
+- Changed the default host API port from `8000` to `8765` to avoid common Windows port conflicts.
+- Added migration `015_embedding_dim_change.sql` to align `memory.embedding` with the 768-dimensional default model and rebuild the HNSW index.
+- Removed the checked-in `.env`; `.env.example` is now the non-secret source of defaults and generated credentials remain private.
+- Added `.gitattributes` so Windows checkouts do not reintroduce CRLF into scripts and source files.
 
 ### Added
-- `scripts/quickstart.sh` brings up the docker stack, waits for the api to become healthy, ensures the embedding model is available, and (with `--with-hermes`) wires Open Brain into a locally-installed Hermes as the active memory provider. Idempotent.
-- Migration `015_embedding_dim_change.sql` alters `memory.embedding` from `vector(1536)` to `vector(768)` and rebuilds the HNSW index to match the new Ollama-backed default embedder.
-- `.gitattributes` forces LF line endings for `*.sh`, `*.py`, `*.sql`, and similar source files so Windows checkouts no longer reintroduce CRLF into shell scripts.
-- `.gitignore` now excludes `.env`; `.env.example` is the single source of truth for non-secret defaults.
-
-### Security
-- Removed the previously-checked-in `.env` from version control. Operators should `cp .env.example .env` (or let `openbrain configure --project-root .` generate the secrets) before first run.
+- Added `scripts/quickstart.sh` for idempotent local stack bootstrap and optional Hermes wiring.
+- Added the API e2e suite covering health, memory, continuity, context, review workflows, maintenance, imports, and authentication behavior.
 
 ## [1.0.0] - 2026-07-22
 
@@ -51,4 +68,6 @@ All notable changes to Open Brain are documented in this file. The project follo
 
 A production deployment is ready only after automatic checks pass and operators explicitly attest that TLS, backups, restore drills, monitoring, and migration records have been verified. Open Brain deliberately does not infer these external controls from configuration alone.
 
+[1.0.2]: https://github.com/benclawbot/open-brain/releases/tag/v1.0.2
+[1.0.1]: https://github.com/benclawbot/open-brain/releases/tag/v1.0.1
 [1.0.0]: https://github.com/benclawbot/open-brain/releases/tag/v1.0.0
