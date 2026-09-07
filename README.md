@@ -124,6 +124,14 @@ curl -fsSL https://raw.githubusercontent.com/benclawbot/open-brain/master/instal
 
 The installer uses `pipx`, keeping Open Brain isolated from system Python packages. It generates a private OpenBrain API key once in `~/.config/openbrain/.env`; upgrades reuse that key. This path is intended for users who already have a Postgres+pgvector instance elsewhere — the docker stack on this repo is the supported local-stack path.
 
+Point `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` at that database, then initialize it directly from the installed package:
+
+```bash
+openbrain migrate
+```
+
+The packaged migration chain starts at `001_base_schema.sql`, so a clean pipx install can create the core schema without cloning the repository or manually downloading `src/db/schema.sql`.
+
 Verify:
 
 ```bash
@@ -213,6 +221,7 @@ openbrain stats
 openbrain import file ./notes.md
 openbrain report --days 7
 openbrain serve --host 127.0.0.1 --port 8000
+openbrain migrate
 openbrain install-hermes
 openbrain update
 ```
