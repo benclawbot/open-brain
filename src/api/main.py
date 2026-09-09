@@ -96,6 +96,14 @@ class MemoryResponse(BaseModel):
     entities: dict
     importance: float
     created_at: datetime
+    # search_memories() already computes this -- `(embedding <=> %s::vector) as
+    # score` for a semantic search, and a constant for the text and filter-only
+    # fallbacks -- but the field was not declared here, so FastAPI's
+    # response_model filtered it out before it reached the caller.
+    #
+    # Optional, because the endpoints that return no score (GET /memories,
+    # GET /memories/{memory_id}) share this model and must stay unchanged.
+    score: Optional[float] = None
 
 
 class SearchRequest(BaseModel):
