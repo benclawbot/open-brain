@@ -60,14 +60,32 @@ class EmbedderConfig:
         
         embedder_cfg = config.get('embedder', {})
         
-        # Provider settings
-        self.provider = embedder_cfg.get('provider', 'openrouter')
-        
-        # Model
-        self.model = embedder_cfg.get('model', 'nomic-embed-text')
-        
-        # Dimensions
-        self.dimensions = embedder_cfg.get('dimensions', 768)
+        # Provider, model and dimensions follow the same env-over-config
+        # precedence as max_chars and chunk_overlap below, so a deployment can
+        # be pointed at a different embedding model without editing a file that
+        # is baked into the image at build time.
+        #
+        # EMBEDDER_PROVIDER is already documented in .env.example ("set
+        # EMBEDDER_PROVIDER and provide the matching API key below") but was
+        # never read, so setting it had no effect.
+        def _env_or(name, fallback):
+            # A set-but-empty variable means "not configured", not "configure
+            # this to the empty string". `.env` files routinely carry blank
+            # placeholders, and letting one through here would silently select
+            # no provider at all.
+            value = os.environ.get(name, '')
+            return value.strip() or fallback
+
+        self.provider = _env_or(
+            'EMBEDDER_PROVIDER', embedder_cfg.get('provider', 'openrouter'))
+
+        self.model = _env_or(
+            'EMBEDDER_MODEL', embedder_cfg.get('model', 'nomic-embed-text'))
+
+        self.dimensions = int(_env_or(
+            'EMBEDDER_DIMENSIONS', embedder_cfg.get('dimensions', 768)))
+        if self.dimensions <= 0:
+            raise ValueError("embedder.dimensions must be greater than zero")
 
         # Chunking guardrail for providers with smaller context windows
         self.max_chars = int(os.environ.get(
