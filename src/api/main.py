@@ -96,6 +96,9 @@ class MemoryResponse(BaseModel):
     entities: dict
     importance: float
     created_at: datetime
+    # Semantic search returns cosine distance (smaller is more similar).
+    # Other memory endpoints do not compute a distance.
+    score: Optional[float] = None
 
 
 class SearchRequest(BaseModel):
@@ -145,7 +148,7 @@ async def readiness():
     return {"status": "ready"}
 
 
-@app.get("/memories", response_model=List[MemoryResponse])
+@app.get("/memories", response_model=List[MemoryResponse], response_model_exclude_unset=True)
 async def get_memories(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -198,7 +201,7 @@ async def create_memory(memory: MemoryCreate):
     }
 
 
-@app.get("/memories/{memory_id}", response_model=MemoryResponse)
+@app.get("/memories/{memory_id}", response_model=MemoryResponse, response_model_exclude_unset=True)
 async def get_memory(memory_id: str):
     """Get a specific memory by ID."""
     import uuid
