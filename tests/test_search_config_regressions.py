@@ -43,7 +43,7 @@ def test_search_exposes_cosine_distance_and_get_does_not_change_shape():
 def test_embedder_respects_environment_precedence_and_blank_values(monkeypatch, tmp_path):
     path = tmp_path / "settings.yaml"
     path.write_text(
-        "embedder:\\n  provider: ollama\\n  model: local-model\\n  dimensions: 768\\n",
+        "embedder:\n  provider: ollama\n  model: local-model\n  dimensions: 768\n",
         encoding="utf-8",
     )
     for name in ("EMBEDDER_PROVIDER", "EMBEDDER_MODEL", "EMBEDDER_DIMENSIONS"):
@@ -74,7 +74,7 @@ def test_embedder_respects_environment_precedence_and_blank_values(monkeypatch, 
 @pytest.mark.parametrize("value", ["0", "-1", "not-a-number"])
 def test_embedder_rejects_invalid_dimensions(monkeypatch, tmp_path, value):
     path = tmp_path / "settings.yaml"
-    path.write_text("embedder: {provider: ollama, model: test, dimensions: 768}\\n")
+    path.write_text("embedder: {provider: ollama, model: test, dimensions: 768}\n")
     monkeypatch.setenv("EMBEDDER_DIMENSIONS", value)
     with pytest.raises(ValueError):
         EmbedderConfig(str(path))
