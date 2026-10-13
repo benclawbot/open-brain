@@ -60,14 +60,22 @@ class EmbedderConfig:
         
         embedder_cfg = config.get('embedder', {})
         
-        # Provider settings
-        self.provider = embedder_cfg.get('provider', 'openrouter')
-        
-        # Model
-        self.model = embedder_cfg.get('model', 'nomic-embed-text')
-        
-        # Dimensions
-        self.dimensions = embedder_cfg.get('dimensions', 768)
+        # Environment settings take precedence over YAML. Blank .env
+        # placeholders are treated as unset, preserving YAML defaults.
+        def env_or(name, fallback):
+            return os.environ.get(name, '').strip() or fallback
+
+        self.provider = env_or(
+            'EMBEDDER_PROVIDER', embedder_cfg.get('provider', 'openrouter')
+        )
+        self.model = env_or(
+            'EMBEDDER_MODEL', embedder_cfg.get('model', 'nomic-embed-text')
+        )
+        self.dimensions = int(env_or(
+            'EMBEDDER_DIMENSIONS', embedder_cfg.get('dimensions', 768)
+        ))
+        if self.dimensions <= 0:
+            raise ValueError("embedder.dimensions must be greater than zero")
 
         # Chunking guardrail for providers with smaller context windows
         self.max_chars = int(os.environ.get(
