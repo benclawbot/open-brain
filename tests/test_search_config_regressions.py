@@ -26,16 +26,20 @@ def _memory():
 
 def test_search_exposes_cosine_distance_and_get_does_not_change_shape():
     memory = _memory()
+    # The shared API app can require an API key in CI; exercise the actual
+    # routes with the app's configured test credential, when present.
+    configured_key = app.state.operational_settings.api_key
+    headers = {"X-API-Key": configured_key} if configured_key else {}
     with (
         patch("src.api.main.search_memories", return_value=[{**memory, "score": 0.26}]),
         patch("src.api.main.create_embedding", return_value=[0.2, 0.3]),
     ):
-        result = TestClient(app).post("/memories/search", json={"query": "roadmap"})
+        result = TestClient(app).post("/memories/search", json={"query": "roadmap"}, headers=headers)
     assert result.status_code == 200, result.text
     assert result.json()[0]["score"] == pytest.approx(0.26)
 
     with patch("src.api.main.get_recent_memories", return_value=[memory]):
-        result = TestClient(app).get("/memories")
+        result = TestClient(app).get("/memories", headers=headers)
     assert result.status_code == 200, result.text
     assert "score" not in result.json()[0]
 
