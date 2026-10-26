@@ -1,5 +1,7 @@
 services:
   api:
+    # Set OPENBRAIN_IMAGE to deploy a published GHCR release with --no-build.
+    image: ${OPENBRAIN_IMAGE:-openbrain-api:local}
     build: .
     container_name: openbrain-api
     depends_on:
@@ -19,6 +21,7 @@ services:
     ports:
     - 127.0.0.1:${API_PORT:-8765}:8000
   dashboard:
+    image: ${OPENBRAIN_IMAGE:-openbrain-dashboard:local}
     build: .
     command: streamlit run ui/dashboard.py --server.port=8501 --server.address=0.0.0.0
     container_name: openbrain-dashboard
