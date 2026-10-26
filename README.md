@@ -118,23 +118,23 @@ docker compose ps
 
 ### Pre-built release images (GHCR)
 
-The official API and dashboard share one multi-architecture image (\`linux/amd64\` and \`linux/arm64\`). Images are published only for verified, non-prerelease GitHub releases:
+The official API and dashboard share one multi-architecture image (`linux/amd64` and `linux/arm64`). Images are published only for verified, non-prerelease GitHub releases:
 
-- \`ghcr.io/benclawbot/open-brain:1.0.2\` — immutable release *version name* (pin to the digest for an immutable deployment).
-- \`ghcr.io/benclawbot/open-brain:stable\` — advances only when a new stable release is published.
+- `ghcr.io/benclawbot/open-brain:1.0.2` — release-specific tag (pin to the digest for an immutable deployment).
+- `ghcr.io/benclawbot/open-brain:stable` — advances only when a new stable release is published.
 
 To use a registry image with the existing PostgreSQL, Ollama, API, and dashboard stack, from a checkout of the matching release:
 
-\`\`\`bash
+```bash
 cp .env.example .env   # only on first install; configure credentials as usual
 export OPENBRAIN_IMAGE=ghcr.io/benclawbot/open-brain:stable
 docker compose pull api dashboard
 docker compose up -d --no-build
-\`\`\`
+```
 
-Persist \`OPENBRAIN_IMAGE\` in your \`.env\` for normal \`docker compose\` commands or Watchtower. For reproducible upgrades, use a version tag or the image digest rather than \`:stable\`, and review release notes before redeploying. The local-source build path remains supported; omit \`OPENBRAIN_IMAGE\` and use \`docker compose up -d --build\`.
+Persist `OPENBRAIN_IMAGE` in your `.env` for normal `docker compose` commands or Watchtower. For reproducible upgrades, use a version tag or the image digest rather than `:stable`, and review release notes before redeploying. The local-source build path remains supported; omit `OPENBRAIN_IMAGE` and use `docker compose up -d --build`.
 
-Maintainers can publish an existing stable release (for example \`v1.0.2\`) from **Actions → Publish Docker image → Run workflow**, entering the published tag. This does not publish images from arbitrary branches or prereleases. If the given tag is not the latest published stable release, only its versioned image is updated (never \`:stable\`). GHCR packages must be publicly visible if anonymous pulls are desired.
+Maintainers can publish an existing stable release (for example `v1.0.2`) from **Actions → Publish Docker image → Run workflow**, entering the published tag. This does not publish images from arbitrary branches or prereleases. If the given tag is not the latest published stable release, only its versioned image is updated (never `:stable`). GHCR packages must be publicly visible if anonymous pulls are desired.
 
 ### Just the CLI (no docker stack)
 
