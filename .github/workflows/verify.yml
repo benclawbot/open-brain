@@ -75,6 +75,9 @@ jobs:
 
   release:
     needs: test
+    outputs:
+      created: ${{ steps.existing.outputs.exists == 'false' }}
+      tag: ${{ steps.version.outputs.tag }}
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
@@ -139,3 +142,13 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "Open Brain $VERSION" \
             --generate-notes
+
+  publish-image:
+    needs: release
+    if: needs.release.outputs.created == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/publish-image.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
