@@ -117,7 +117,11 @@ def main() -> int:
     report_parser.add_argument("--output", "-o")
 
     serve_parser = subparsers.add_parser("serve", help="Start API server")
-    serve_parser.add_argument("--host", default="0.0.0.0")
+    serve_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Bind address (default: 127.0.0.1; use 0.0.0.0 only with authentication enabled)",
+    )
     serve_parser.add_argument("--port", "-p", type=int, default=8000)
     serve_parser.add_argument("--reload", action="store_true")
 

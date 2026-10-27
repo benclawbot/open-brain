@@ -114,3 +114,44 @@ def test_sliding_window_releases_expired_entries():
     assert limiter.allow("client", now=0) == (True, 0)
     assert limiter.allow("client", now=1)[0] is False
     assert limiter.allow("client", now=11) == (True, 0)
+
+
+def test_unauthenticated_access_is_rejected_for_non_loopback_clients():
+    client = TestClient(
+        make_app(settings(auth_required=False, api_key=None)),
+        client=("203.0.113.7", 50000),
+    )
+
+    response = client.get("/protected")
+
+    assert response.status_code == 403
+    assert "loopback" in response.json()["detail"]
+
+
+def test_unauthenticated_remote_access_requires_explicit_opt_in():
+    client = TestClient(
+        make_app(
+            settings(
+                auth_required=False,
+                api_key=None,
+                allow_remote_unauthenticated=True,
+            )
+        ),
+        client=("203.0.113.7", 50000),
+    )
+
+    assert client.get("/protected").status_code == 200
+
+
+def test_loopback_detection_accepts_only_local_addresses():
+    from src.api.operations import _is_loopback_client
+
+    assert _is_loopback_client("127.0.0.1")
+    assert _is_loopback_client("::1")
+    assert _is_loopback_client("::ffff:127.0.0.1")
+    assert _is_loopback_client("localhost")
+    # In-process TestClient host, which cannot come from a real connection.
+    assert _is_loopback_client("testclient")
+    assert not _is_loopback_client("192.168.1.20")
+    assert not _is_loopback_client("203.0.113.7")
+    assert not _is_loopback_client("example.com")

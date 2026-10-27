@@ -1,11 +1,14 @@
 """REST endpoint for bounded automated maintenance."""
 
+import logging
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from ..maintenance import MaintenanceOptions, run_maintenance
+
+logger = logging.getLogger("openbrain.api")
 
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 
@@ -23,4 +26,8 @@ class MaintenanceRequest(BaseModel):
 
 @router.post("/run")
 async def run(request: MaintenanceRequest) -> dict:
-    return run_maintenance(MaintenanceOptions(**request.model_dump()))
+    try:
+        return run_maintenance(MaintenanceOptions(**request.model_dump()))
+    except Exception:
+        logger.exception("maintenance run failed")
+        raise HTTPException(status_code=500, detail="Maintenance failed") from None

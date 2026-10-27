@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
 import os
@@ -37,6 +38,7 @@ class OperationalSettings:
     rate_limit_requests: int
     rate_limit_window_seconds: int
     trusted_proxy_headers: bool
+    allow_remote_unauthenticated: bool = False
 
     @classmethod
     def from_env(cls) -> "OperationalSettings":
@@ -58,6 +60,9 @@ class OperationalSettings:
                 1, int(os.getenv("OPENBRAIN_RATE_LIMIT_WINDOW_SECONDS", "60"))
             ),
             trusted_proxy_headers=_env_bool("OPENBRAIN_TRUST_PROXY_HEADERS", False),
+            allow_remote_unauthenticated=_env_bool(
+                "OPENBRAIN_ALLOW_REMOTE_UNAUTHENTICATED", False
+            ),
         )
 
 
@@ -94,6 +99,24 @@ def _client_key(request: Request, trust_proxy_headers: bool) -> str:
 
 def _is_public_path(path: str) -> bool:
     return path in {"/", "/health", "/health/live", "/health/ready"}
+
+
+def _is_loopback_client(host: str) -> bool:
+    """Return True only for connections originating on this machine."""
+    normalized = host.strip().lower()
+    if normalized == "localhost":
+        return True
+    if normalized == "testclient":
+        # Starlette's in-process TestClient reports this synthetic value; a
+        # real TCP connection cannot produce it.
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+        return address.ipv4_mapped.is_loopback
+    return address.is_loopback
 
 
 def _valid_api_key(request: Request, expected: str | None) -> bool:
@@ -144,15 +167,34 @@ def configure_operations(app: FastAPI, settings: OperationalSettings | None = No
                 headers={"Retry-After": str(retry_after), "X-Request-ID": request_id},
             )
 
-        if settings.auth_required and not _is_public_path(path):
-            if not _valid_api_key(request, settings.api_key):
+        if not _is_public_path(path):
+            if settings.auth_required:
+                if not _valid_api_key(request, settings.api_key):
+                    return JSONResponse(
+                        status_code=401,
+                        content={"detail": "Invalid or missing API key", "request_id": request_id},
+                        headers={
+                            "WWW-Authenticate": "Bearer",
+                            "X-Request-ID": request_id,
+                        },
+                    )
+            elif not settings.allow_remote_unauthenticated and not _is_loopback_client(
+                request.client.host if request.client else "unknown"
+            ):
+                # Authentication is optional in development, but unauthenticated
+                # access is still limited to the local machine. Binding to a
+                # routable interface must not silently expose the API.
                 return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Invalid or missing API key", "request_id": request_id},
-                    headers={
-                        "WWW-Authenticate": "Bearer",
-                        "X-Request-ID": request_id,
+                    status_code=403,
+                    content={
+                        "detail": (
+                            "Unauthenticated access is limited to loopback clients; "
+                            "set OPENBRAIN_API_KEY and OPENBRAIN_AUTH_REQUIRED=true "
+                            "to allow remote access"
+                        ),
+                        "request_id": request_id,
                     },
+                    headers={"X-Request-ID": request_id},
                 )
 
         response = await call_next(request)

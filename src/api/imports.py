@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -12,9 +12,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from ..db.import_queries import rollback_staged_import
 from ..importers.base import ImportSource
 from ..importers.hermes_markdown import HermesMarkdownImporter
+from ..importers.path_guard import ImportPathError, resolve_import_path
 from ..importers.providers import provider_adapter, provider_descriptors
 from ..importers.runner import ImportSummary, run_import
 from ..importers.staging import seal_import_run
+
+logger = logging.getLogger("openbrain.api")
 
 router = APIRouter(tags=["imports"])
 
@@ -83,22 +86,24 @@ async def import_hermes_markdown(request: HermesMarkdownImportRequest) -> Import
     }:
         raise HTTPException(status_code=422, detail="source must be a Hermes markdown source")
 
-    path = Path(request.path).expanduser()
-    if not path.exists():
-        raise HTTPException(status_code=404, detail=f"source file not found: {path}")
+    try:
+        path = resolve_import_path(request.path)
+    except ImportPathError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     try:
         return run_import(
             HermesMarkdownImporter(path, request.source),
             source_system=request.source.value,
-            source_instance=str(path.resolve()),
+            source_instance=str(path),
             dry_run=request.dry_run,
             resume_run_id=request.resume_run_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("hermes markdown import failed")
+        raise HTTPException(status_code=500, detail="Import failed") from None
 
 
 @router.get(
@@ -130,8 +135,9 @@ async def import_provider_records(request: ProviderImportRequest) -> ImportSumma
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("import operation failed")
+        raise HTTPException(status_code=500, detail="Import operation failed") from None
 
 
 @router.post(
@@ -149,8 +155,9 @@ async def seal_import(run_id: UUID, request: ImportSealRequest) -> ImportSealRes
         return ImportSealResponse.model_validate(result)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("import operation failed")
+        raise HTTPException(status_code=500, detail="Import operation failed") from None
 
 
 @router.post(
@@ -164,5 +171,6 @@ async def rollback_import(run_id: UUID, request: ImportRollbackRequest) -> Impor
         return ImportRollbackResponse.model_validate(result)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("import operation failed")
+        raise HTTPException(status_code=500, detail="Import operation failed") from None

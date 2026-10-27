@@ -4,6 +4,12 @@ All notable changes to Open Brain are documented in this file. The project follo
 
 ## [Unreleased]
 
+### Security
+- `openbrain serve` now binds to `127.0.0.1` by default instead of every interface.
+- Unauthenticated API access is restricted to loopback clients. Remote access now requires `OPENBRAIN_API_KEY` plus `OPENBRAIN_AUTH_REQUIRED=true` (or the explicit, discouraged `OPENBRAIN_ALLOW_REMOTE_UNAUTHENTICATED=true`).
+- The Hermes markdown import endpoint confines paths to `OPENBRAIN_IMPORT_ROOTS` (defaults: `~/.hermes`, `~/.codex`, `~/.claude`) and only accepts `.md`, `.markdown`, or `.txt` files, closing an arbitrary-file-read path.
+- Import and maintenance failures return a generic message instead of echoing exception details.
+
 ## [1.0.2] - 2026-09-07
 
 ### Fixed
