@@ -93,6 +93,9 @@ Integration guides:
 
 ## Installation
 
+New contributors: [contribution guide](CONTRIBUTING.md) · [five-minute memory walkthrough](docs/EXAMPLE-MEMORY-FLOW.md) · [backup and restore drill](docs/BACKUP-RESTORE.md).
+
+
 Open Brain requires Python 3.11+ and Docker (Docker Desktop on Windows / macOS, docker Engine on Linux). The default docker-compose stack uses a local [Ollama](https://ollama.com) service for embeddings, so no external API key is required.
 
 ### One-line install (recommended)
